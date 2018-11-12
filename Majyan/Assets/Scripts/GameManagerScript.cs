@@ -66,9 +66,9 @@ public class GameManagerScript : MonoBehaviour {
             {
                 hands[p].Add(deckManager.DrawCard());
             }
-        }
 
-        ShowHands(0);
+            ShowHands(p);
+        }
     }
 
     private void ShowHands(int player)
@@ -77,8 +77,9 @@ public class GameManagerScript : MonoBehaviour {
         {
             GameObject card = new GameObject();
             card.AddComponent<SpriteRenderer>().sprite = cardImages[Rules.IdChangeSerialToCard(hands[player][i])];
-            card.transform.localScale = new Vector2(1.5f, 1.5f);
-            card.transform.position = new Vector2(-7+i, -3);
+            card.transform.localScale = Layouts.GetHandScale(player);
+            card.transform.position = Layouts.GetHandOffset(player)+Layouts.GetHandLineupDirection(player)*i;
+            card.transform.rotation = Quaternion.Euler(Layouts.GetHandRotation(player));
         }
     }
 
