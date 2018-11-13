@@ -2,18 +2,28 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManagerScript : MonoBehaviour {
 
     // Objects //
     public Sprite[] cardImages = new Sprite[37];
     private DeckManager deckManager = new DeckManager();
+    private GameObject roundText;
+    private GameObject scoreIcons;
+    private GameObject[] scoreTexts=new GameObject[4];
 
     // Constants //
     private const int NULL_ID = -1000;
 
     // Variable //
-    private int parent = NULL_ID;
+    private int[] scores = new int[4];
+    private int startPlayer;
+    private int round;
+    private int parentCount;
+    private int betCount;
+    private bool parentStay;
+    private bool increaseParentCount;
     
     // Cards //
     private List<int>[] hands = new List<int>[4];
@@ -22,7 +32,15 @@ public class GameManagerScript : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 
-        Random.SetSeed(DateTime.Now.Millisecond);
+        roundText = GameObject.Find("Canvas/RoundText");
+        scoreIcons = GameObject.Find("Canvas/ScoreIcons");
+
+        for(int i = 0; i < scoreTexts.Length; i++)
+        {
+            scoreTexts[i] = GameObject.Find("Canvas/ScoreText" + i);
+        }
+
+        //Random.SetSeed(DateTime.Now.Millisecond);
 
         for (int i = 0; i < 4; i++)
         {
@@ -42,6 +60,18 @@ public class GameManagerScript : MonoBehaviour {
     {
         deckManager.Initialize_NewGame();
 
+        for(int i = 0; i < scores.Length; i++)
+        {
+            scores[i] = 25000;
+        }
+
+        startPlayer = Random.Xor128_next(4);
+        round = 0;
+        parentCount = 0;
+        betCount = 0;
+        parentStay = true;
+        increaseParentCount = false;
+
         Initialize_NextRound();
     }
 
@@ -55,9 +85,45 @@ public class GameManagerScript : MonoBehaviour {
             tables[i].Clear();
         }
 
+        if (parentStay == false)
+        {
+            round++;
+        }
+
+        if (increaseParentCount)
+        {
+            parentCount++;
+        }
+        else
+        {
+            parentCount = 0;
+        }
+
+        ShowRound();
+
         Deal();
     }
 
+    private void ShowRound()
+    {
+        roundText.GetComponent<Text>().text = Rules.CountsToString(round, parentCount, betCount);
+
+        ShowScores_All();
+    }
+
+    private void ShowScore(int player)
+    {
+        scoreTexts[player].GetComponent<Text>().text = 
+            Rules.PlayerIdToHouseString(startPlayer,round,player)+" "+ scores[player];
+    }
+
+    private void ShowScores_All()
+    {
+        for(int i = 0; i < scores.Length; i++)
+        {
+            ShowScore(i);
+        }
+    }
     
     private void Deal()
     {
