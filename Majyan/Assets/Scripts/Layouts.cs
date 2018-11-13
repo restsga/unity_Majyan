@@ -1,39 +1,59 @@
 ﻿using UnityEngine;
 
-static public class Layouts{
+static public class Layouts
+{
 
-    readonly static private Vector2[] handScales={new Vector2(1.5f,1.5f),new Vector2(0.75f,0.75f)};
-    readonly static private Vector2[] handOffsets = { new Vector2(-7f, -4f) ,new Vector2(-7f,4.5f),
-    new Vector2(3.5f,4.5f),new Vector2(7f,-2f)};
-    readonly static private Vector2[] handLineupDirections = { new Vector2(1f, 0f),new Vector2(0f,-0.5f) ,
-    new Vector2(-0.5f,0f) ,new Vector2(0f,0.5f) };
-    readonly static private Vector3[] handRotations = { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,-90f),
-    new Vector3(0f,0f,180f),new Vector3(0f,0f,90f)};
+    readonly static public Vector2[] roundTextPositons =
+        { new Vector2(-0.5f, 1f),new Vector2(0f,1f),new Vector2(0.5f,1f),
+        new Vector2(-0.45f, 0.4f),new Vector2(0.1f,0.4f),new Vector2(0.5f,0.4f),
+        new Vector2(-0.45f,-0.2f),new Vector2(0.1f,-0.2f),new Vector2(0.5f,-0.2f)};
 
-    static public Vector2 GetHandScale(int player)
-    {
-        if (player == 0)
-        {
-            return handScales[0];
-        }
-        else
-        {
-            return handScales[1];
-        }
-    }
+    readonly static public Vector2[] roundTextScales =
+        {new Vector2(0.5f,0.5f),new Vector2(0.5f,0.5f),new Vector2(0.5f,0.5f),
+        new Vector2(1.5f,0.5f),new Vector2(0.5f,0.5f),new Vector2(0.5f,0.5f),
+        new Vector2(1.5f,0.5f),new Vector2(0.5f,0.5f),new Vector2(0.5f,0.5f)};
 
-    static public Vector2 GetHandOffset(int player)
-    {
-        return handOffsets[player];
-    }
+    readonly static public Vector3[] roundTextRotations =
+        {new Vector3(0f,0f,0f),new Vector3(0f,0f,0f),new Vector3(0f,0f,0f),
+        new Vector3(0f,0f,90f),new Vector3(0f,0f,0f),new Vector3(0f,0f,0f),
+        new Vector3(0f,0f,90f),new Vector3(0f,0f,0f),new Vector3(0f,0f,0f)};
 
-    static public Vector2 GetHandLineupDirection(int player)
-    {
-        return handLineupDirections[player];
-    }
 
-    static public Vector3 GetHandRotation(int player)
-    {
-        return handRotations[player];
-    }
+    readonly static public Vector2[] scoreTextOffsets =
+        {new Vector2(-0.7f,-0.65f),new Vector2(1f,-0.2f),
+    new Vector2(0.7f,1.5f),new Vector2(-1f,1.1f)};
+
+    readonly static public Vector2[] scoreTextScales =
+        {new Vector2(0.3f,0.3f),new Vector2(0.3f,0.3f),
+    new Vector2(0.3f,0.3f),new Vector2(0.3f,0.3f)};
+
+    readonly static public Vector2[] scoreTextLineupDirections =
+        {new Vector2(0.21f,0f),new Vector2(0f,0.21f),
+    new Vector2(-0.21f,0f),new Vector2(0f,-0.21f)};
+
+    readonly static public Vector3[] scoreTextRotations =
+        {new Vector3(0f,0f,0f),new Vector3(0f,0f,90f),
+    new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
+
+    readonly static public Vector2[] scoreTextCompassSpaces =
+        {new Vector2(0.3f,0f),new Vector2(0f,0.3f),
+    new Vector2(-0.3f,0f),new Vector2(0f,-0.3f)};
+
+
+    readonly static public Vector2[] handOffsets =
+        { new Vector2(-7f, -4f) ,new Vector2(-7f,4.5f),
+        new Vector2(3.5f,4.5f),new Vector2(7f,-2f)};
+
+    readonly static public Vector2[] handScales =
+        {new Vector2(1.5f,1.5f),new Vector2(0.75f,0.75f),
+        new Vector2(0.75f,0.75f),new Vector2(0.75f,0.75f)};
+
+    readonly static public Vector2[] handLineupDirections =
+        { new Vector2(1f, 0f),new Vector2(0f,-0.5f) ,
+        new Vector2(-0.5f,0f) ,new Vector2(0f,0.5f) };
+
+    readonly static public Vector3[] handRotations =
+        { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,-90f),
+        new Vector3(0f,0f,180f),new Vector3(0f,0f,90f)};
+
 }
