@@ -26,4 +26,9 @@ public class Rules{
     {
         return (startPlayer+round+player)%4;
     }
+
+    static public int HouseIdToPlayerId(int startPlayer, int round, int house)
+    {
+        return (startPlayer + round + house) % 4;
+    }
 }
