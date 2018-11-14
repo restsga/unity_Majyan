@@ -7,15 +7,17 @@ using UnityEngine.UI;
 public class GameManagerScript : MonoBehaviour {
 
     // Objects //
-    public Sprite[] cardImages = new Sprite[37];
+    public Sprite[] cardImages = new Sprite[38];
     public Sprite[] fontImages_ja = new Sprite[6];
     public Sprite[] fontImages_num = new Sprite[10];
     public Sprite[] scoreIconImages = new Sprite[2];
     private DeckManager deckManager = new DeckManager();
-    private List<GameObject> cardObjects = new List<GameObject>();
+    private List<GameObject>[] handObjects = new List<GameObject>[4];
+    private List<GameObject>[] tableObjects = new List<GameObject>[4];
     private List<GameObject> roundTextObjects = new List<GameObject>();
     private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];
-         
+    private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };     
+
     // Constants //
     private const int NULL_ID = -1000;
 
@@ -27,6 +29,12 @@ public class GameManagerScript : MonoBehaviour {
     private int betCount;
     private bool parentStay;
     private bool increaseParentCount;
+
+    private int turnPlayer;
+
+    private delegate void NextMethod();
+    private NextMethod nextMethod;
+    private float timer;
     
     // Cards //
     private List<int>[] hands = new List<int>[4];
@@ -41,6 +49,8 @@ public class GameManagerScript : MonoBehaviour {
         {
             hands[i] = new List<int>();
             tables[i] = new List<int>();
+            handObjects[i] = new List<GameObject>();
+            tableObjects[i] = new List<GameObject>();
             scoreTextObjects[i] = new List<GameObject>();
         }
 
@@ -49,7 +59,16 @@ public class GameManagerScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		
+
+        if (nextMethod != null)
+        {
+            timer -= Time.deltaTime;
+
+            if (timer <= 0)
+            {
+                nextMethod();
+            }
+        }
 	}
 
     private void Initialize_NewGame()
@@ -67,6 +86,9 @@ public class GameManagerScript : MonoBehaviour {
         betCount = 0;
         parentStay = true;
         increaseParentCount = false;
+
+        nextMethod = null;
+        timer = 0f;
 
         Initialize_NextRound();
     }
@@ -97,7 +119,10 @@ public class GameManagerScript : MonoBehaviour {
 
         ShowRound();
 
-        Deal();
+        turnPlayer = Rules.HouseIdToPlayerId(startPlayer, round, 0);
+
+        nextMethod= Deal;
+        timer = 0f;
     }
 
     private void ShowRound()
@@ -130,9 +155,6 @@ public class GameManagerScript : MonoBehaviour {
 
     private void ShowScore(int player)
     {
-        //scoreTexts[player].GetComponent<Text>().text = 
-        //Rules.PlayerIdToHouseString(startPlayer,round,player)+" "+ scores[player];
-
         GameObject compass = new GameObject();
         compass.AddComponent<SpriteRenderer>().sprite = fontImages_ja[Rules.PlayerIdToHouseId(startPlayer,round,player)];
         compass.transform.localScale = Layouts.scoreTextScales[player];
@@ -181,29 +203,126 @@ public class GameManagerScript : MonoBehaviour {
                 hands[p].Add(deckManager.DrawCard());
             }
 
-            ShowHands(p);
+            ShowOrHideHand_Only(p);
         }
+
+        nextMethod = DrawCard;
+        timer = 1.0f;
     }
 
-    private void ShowHands(int player)
+    private void ShowHand_Only(int player,bool show)
     {
+        DestroyCardObjects(ref handObjects[player]);
         for (int i = 0; i < hands[player].Count; i++)
         {
             GameObject card = new GameObject();
-            card.AddComponent<SpriteRenderer>().sprite = cardImages[Rules.IdChangeSerialToCard(hands[player][i])];
+            Sprite sprite;
+            if (show)
+            {
+                sprite = cardImages[Rules.IdChangeSerialToCard(hands[player][i])];
+            }
+            else
+            {
+                sprite = cardImages[37];
+            }
+            card.AddComponent<SpriteRenderer>().sprite = sprite;
             card.transform.localScale = Layouts.handScales[player];
             card.transform.position = Layouts.handOffsets[player]+Layouts.handLineupDirections[player]*i;
             card.transform.rotation = Quaternion.Euler(Layouts.handRotations[player]);
-            cardObjects.Add(card);
+            handObjects[player].Add(card);
+        }
+    }
+
+    private void ShowOrHideHand_Only(int player)
+    {
+        bool[] shows = { true, true, true, true };
+        ShowHand_Only(player, shows[player]);
+    }
+
+    private void ShowAndHideHands(bool[] shows)
+    {
+        for (int i = 0; i < hands.Length; i++)
+        {
+            ShowHand_Only(i, true);
         }
     }
 
     private void ShowHands_All()
     {
-        for(int i = 0; i < hands.Length; i++)
+        bool[] shows = { true, true, true, true};
+        ShowAndHideHands(shows);
+    }
+
+    private void ShowAndHideHands_Default()
+    {
+        bool[] shows = { true, false, false, false };
+        ShowAndHideHands(shows);
+    }
+
+    private void DestroyCardObjects(ref List<GameObject> cardObjects)
+    {
+        for (int i = cardObjects.Count-1; 0 <= i; i--)
         {
-            ShowHands(i);
+            Destroy(cardObjects[i]);
         }
+
+        cardObjects.Clear();
+    }
+
+    private void DrawCard()
+    {
+        hands[turnPlayer].Add(deckManager.DrawCard());
+
+        ShowHand_Only(turnPlayer, true);
+
+        ai[turnPlayer].DecideDiscard(hands[turnPlayer]);
+
+        nextMethod = Discard;
+        timer = 1.0f;
+    }
+
+    private void Discard()
+    {
+        int discardIndex = ai[turnPlayer].GetDiscord();
+        tables[turnPlayer].Add(hands[turnPlayer][discardIndex]);
+        hands[turnPlayer].RemoveAt(discardIndex);
+
+        ShowOrHideHand_Only(turnPlayer);
+        ShowTableCard_Only(turnPlayer);
+
+        nextMethod = NextTurn;
+        timer = 1.0f;
+    }
+
+    private void ShowTableCard_Only(int player)
+    {
+        for (int i = 0; i < tables[player].Count; i++)
+        {
+            GameObject card = new GameObject();
+            Sprite sprite = cardImages[Rules.IdChangeSerialToCard(tables[player][i])];
+            card.AddComponent<SpriteRenderer>().sprite = sprite;
+            card.transform.localScale = Layouts.tableScales[player];
+            card.transform.position =
+                Layouts.tableOffsets[player] +
+                Layouts.tableLineupNextDirections[player] * (i%6)+
+                Layouts.tableLineupNewLineDirections[player] * (i / 6);
+            card.transform.rotation = Quaternion.Euler(Layouts.tableRotations[player]);
+            tableObjects[player].Add(card);
+        }
+    }
+
+    private void ShowTableCards_All()
+    {
+        for(int i = 0; i < tables.Length; i++)
+        {
+            ShowTableCard_Only(i);
+        }
+    }
+
+    private void NextTurn()
+    {
+        turnPlayer = (turnPlayer + 1) % 4;
+        DrawCard();
     }
 }
 
