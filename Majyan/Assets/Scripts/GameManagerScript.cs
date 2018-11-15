@@ -36,7 +36,9 @@ public class GameManagerScript : MonoBehaviour {
     private delegate void NextMethod();
     private NextMethod nextMethod;
     private float timer;
-    
+
+    private int seed;
+
     // Cards //
     private List<int>[] hands = new List<int>[4];
     private List<int>[] tables = new List<int>[4];
@@ -44,12 +46,14 @@ public class GameManagerScript : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-
         //Random.SetSeed(DateTime.Now.Millisecond);
-        Random.SetSeed(10048);
+
+        seed = DateTime.Now.Millisecond;
+        Random.SetSeed(10000+seed);
         //kan:10006,10008,10012,10025
         //ankan:10029,10033
         //kakan:10048
+        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = "1" + seed;
 
         for (int i = 0; i < 4; i++)
         {
