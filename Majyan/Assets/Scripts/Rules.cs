@@ -60,4 +60,9 @@ public class Rules
     {
         return card1/4==card2/4;
     }
+
+    static public bool Bonus5(int card)
+    {
+        return (IdChangeSerialToCardImageId(card)%10==4&&IdChangeSerialToCardImageId(card)<=30);
+    }
 }

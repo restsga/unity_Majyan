@@ -46,7 +46,10 @@ public class GameManagerScript : MonoBehaviour {
 	void Start () {
 
         //Random.SetSeed(DateTime.Now.Millisecond);
-        Random.SetSeed(10002);
+        Random.SetSeed(10048);
+        //kan:10006,10008,10012,10025
+        //ankan:10029,10033
+        //kakan:10048
 
         for (int i = 0; i < 4; i++)
         {
@@ -209,6 +212,8 @@ public class GameManagerScript : MonoBehaviour {
                 hands[p].Add(deckManager.DrawCard());
             }
 
+            hands[p].Sort();
+
             ShowOrHideHand_Only(p);
         }
 
@@ -296,7 +301,7 @@ public class GameManagerScript : MonoBehaviour {
         ShowOrHideHand_Only(turnPlayer);
         ShowTableCard_Only(turnPlayer);
 
-        nextMethod = Call;
+        nextMethod = Call_Rob;
         timer = Times.Wait_Call();
     }
 
@@ -327,7 +332,7 @@ public class GameManagerScript : MonoBehaviour {
         }
     }
 
-    private void Call()
+    private void Call_Rob()
     {
         for (int p = 0; p < hands.Length; p++)
         {
@@ -335,13 +340,46 @@ public class GameManagerScript : MonoBehaviour {
             {
                 int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];
                 bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);
+
+                if (pon_kan[1])
+                {
+                    if (ai[p].DecideKan(hands[p]))
+                    {
+                        int[] cards = new int[4];
+                        int count = 0;
+
+                        for (int i = hands[p].Count - 1; 0 <= i; i--)
+                        {
+                            if (Rules.Same_BonusEquate(hands[p][i], discard))
+                            {
+                                cards[count] = hands[p][i];
+                                hands[p].RemoveAt(i);
+                                count++;
+                            }
+                        }
+
+                        cards[3] = discard;
+                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
+                        callCards[p].Add(new CallCardsSet());
+                        callCards[p][callCards[p].Count - 1].Kan(cards, p, turnPlayer);
+
+                        ShowOrHideHand_Only(p);
+                        ShowTableCard_Only(turnPlayer);
+                        ShowCallCard_Only(p);
+
+                        ai[p].DecideDiscard(hands[p]);
+                        turnPlayer = p;
+
+                        nextMethod = Discard;
+                        timer = Times.Wait_DrawToDiscard();
+                        return;
+                    }
+                }
                 if (pon_kan[0])
                 {
-                    if (pon_kan[1])
-                    {
+                    bool bonus=true;
 
-                    }
-                    else
+                    if (ai[p].DecidePon(hands[p],ref bonus))
                     {
                         int[] cards = new int[3];
                         int count = 0;
@@ -355,25 +393,41 @@ public class GameManagerScript : MonoBehaviour {
                                 count++;
                             }
                         }
+                        if (count >= 3)
+                        {
+                            int indexAdd = 0;
+                            if (bonus == false)
+                            {
+                                indexAdd = 2;
+                            }
+                            for (int i = 0; i < cards.Length; i++)
+                            {
+                                if (Rules.Bonus5(cards[i]))
+                                {
+                                    int keep = cards[0 + indexAdd];
+                                    cards[0 + indexAdd] = cards[i];
+                                    cards[i] = keep;
+                                    break;
+                                }
+                            }
+                        }
+
                         cards[2] = discard;
                         tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
                         callCards[p].Add(new CallCardsSet());
                         callCards[p][callCards[p].Count - 1].Pon(cards, p, turnPlayer);
+
+                        ShowOrHideHand_Only(p);
+                        ShowTableCard_Only(turnPlayer);
+                        ShowCallCard_Only(p);
+
+                        ai[p].DecideDiscard(hands[p]);
+                        turnPlayer = p;
+
+                        nextMethod = Discard;
+                        timer = Times.Wait_DrawToDiscard();
+                        return;
                     }
-                    ShowOrHideHand_Only(p);
-                    ShowTableCard_Only(turnPlayer);
-                    ShowCallCard_Only(p);
-
-                    ai[p].DecideDiscard(hands[p]);
-                    turnPlayer = p;
-
-                    nextMethod = Discard;
-                    timer = Times.Wait_DrawToDiscard();
-                    return;
-                }
-                if (pon_kan[1])
-                {
-                    return;
                 }
             }
         }
@@ -434,7 +488,11 @@ public class DeckManager
 
     // Cards //
     private int[] deck = new int[136];
-
+    /*private int[] deck = {0,1,2,4,5,6,8,9,10,12,13,14,16,
+        20,21,22,24,25,26,28,29,30,32,33,34,36,
+    40,41,42,44,45,46,48,49,50,52,53,54,56,
+    60,61,62,64,65,66,68,69,70,72,73,74,76,
+    3,7,11,15,17,18,19,23,27,31,35,37,38,39,43,47,51,55,57,58,59,63,67,71,75,77,78,79,80};*/
     public void Initialize_NewGame()
     {
         for (int i = 0; i < deck.Length; i++)
@@ -446,6 +504,7 @@ public class DeckManager
     public void Initialize_NextRound()
     {
         deckUsedIndex = -1;
+
         Shuffle();
     }
 
@@ -497,6 +556,36 @@ public class CallCardsSet
             }
 
             callCards.Add(callCard);
+        }
+    }
+
+    public void Kan(int[] cardsId, int callPlayer, int discardPlayer)
+    {
+        int count = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            CallCard callCard = new CallCard();
+
+            if ((i + callPlayer + 1) % 4 == discardPlayer)
+            {
+                callCard.card = cardsId[3];
+                callCard.discardPlayer = discardPlayer;
+            }
+            else
+            {
+                callCard.card = cardsId[count];
+                count++;
+                callCard.discardPlayer = callPlayer;
+            }
+
+            if (i >= 3)
+            {
+                callCards.Insert(1, callCard);
+            }
+            else
+            {
+                callCards.Add(callCard);
+            }
         }
     }
 }
