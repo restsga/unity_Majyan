@@ -334,11 +334,12 @@ public class GameManagerScript : MonoBehaviour {
 
     private void Call_Rob()
     {
+        int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];
+
         for (int p = 0; p < hands.Length; p++)
         {
             if (p != turnPlayer)
             {
-                int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];
                 bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);
 
                 if (pon_kan[1])
@@ -431,7 +432,42 @@ public class GameManagerScript : MonoBehaviour {
                 }
             }
         }
-            nextMethod = NextTurn;
+
+        int tiPlayer = (turnPlayer + 1) % 4;
+        if (Rules.CanTi(hands[tiPlayer], discard))
+        {
+            int[] indexes = new int[2];
+            if (ai[tiPlayer].DecideTi(hands[tiPlayer], ref indexes,discard))
+            {
+                Array.Sort(indexes);
+                Array.Reverse(indexes);
+                    int[] cards = new int[3];
+
+                    for (int i = 0; i<indexes.Length; i++)
+                    {
+                            cards[i] = hands[tiPlayer][indexes[i]];
+                            hands[tiPlayer].RemoveAt(indexes[i]);
+                    }
+
+                    cards[2] = discard;
+                    tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
+                    callCards[tiPlayer].Add(new CallCardsSet());
+                    callCards[tiPlayer][callCards[tiPlayer].Count - 1].Ti(cards, tiPlayer, turnPlayer);
+
+                    ShowOrHideHand_Only(tiPlayer);
+                    ShowTableCard_Only(turnPlayer);
+                    ShowCallCard_Only(tiPlayer);
+
+                    ai[tiPlayer].DecideDiscard(hands[tiPlayer]);
+                    turnPlayer = tiPlayer;
+
+                    nextMethod = Discard;
+                    timer = Times.Wait_DrawToDiscard();
+                    return;
+                }
+        }
+
+        nextMethod = NextTurn;
         timer = Times.Wait_NextTurn();
     }
 
@@ -586,6 +622,29 @@ public class CallCardsSet
             {
                 callCards.Add(callCard);
             }
+        }
+    }
+
+    public void Ti(int[] cardsId, int callPlayer, int discardPlayer)
+    {
+        int count = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            CallCard callCard = new CallCard();
+
+            if ((i + callPlayer + 1) % 4 == discardPlayer)
+            {
+                callCard.card = cardsId[2];
+                callCard.discardPlayer = discardPlayer;
+            }
+            else
+            {
+                callCard.card = cardsId[count];
+                count++;
+                callCard.discardPlayer = callPlayer;
+            }
+
+            callCards.Add(callCard);
         }
     }
 }

@@ -8,7 +8,7 @@ abstract public class AI {
 
     public abstract void DecideDiscard(List<int> hand);
     public abstract bool DecidePon(List<int> hand,ref bool bonus);
-    public abstract bool DecideTi(List<int> hand, ref int[] indexes);
+    public abstract bool DecideTi(List<int> hand, ref int[] indexes,int discard_other);
     public abstract bool DecideKan(List<int> hand);
 
     public int GetDiscord()

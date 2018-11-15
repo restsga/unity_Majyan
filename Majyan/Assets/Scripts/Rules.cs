@@ -65,4 +65,42 @@ public class Rules
     {
         return (IdChangeSerialToCardImageId(card)%10==4&&IdChangeSerialToCardImageId(card)<=30);
     }
+
+    static public bool CanTi(List<int> hand, int discard)
+    {
+        List<int> sameGroupCards = new List<int>();
+        int[,] numbers = { { -2, -1 }, { -1, 1 }, { 1, 2 } };
+
+        if (IdChangeSerialToCardImageId(discard) <= 29)
+        {
+            for (int i = 0; i < hand.Count; i++)
+            {
+                if (SameGroup(hand[i], discard))
+                {
+                    sameGroupCards.Add(hand[i]);
+                }
+            }
+            sameGroupCards.Sort();
+            for (int c = 0; c < 3; c++) {
+                int check = 0;
+                for (int i = 0; i < sameGroupCards.Count; i++)
+                {
+                    if (Same_BonusEquate(sameGroupCards[i],discard+ numbers[c, check]*4))
+                    {
+                        check++;
+                        if (check >= 2)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    static public bool SameGroup(int card1,int card2)
+    {
+        return card1 / 4 / 9 == card2 / 4 / 9;
+    }
 }

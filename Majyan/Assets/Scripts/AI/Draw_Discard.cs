@@ -25,8 +25,41 @@ public class Draw_Discard:AI {
         return true;
     }
 
-    public override bool DecideTi(List<int> hand, ref int[] indexes)
+    public override bool DecideTi(List<int> hand, ref int[] indexes,int discard_other)
     {
+        List<int> sameGroupCards = new List<int>();
+        List<int> indexesOfHand = new List<int>();
+        int[,] numbers = { { -2, -1 }, { -1, 1 }, { 1, 2 } };
+
+        if (Rules.IdChangeSerialToCardImageId(discard_other) <= 29)
+        {
+            for (int i = 0; i < hand.Count; i++)
+            {
+                if (Rules.SameGroup(hand[i], discard_other))
+                {
+                    sameGroupCards.Add(hand[i]);
+                    indexesOfHand.Add(i);
+                }
+            }
+            sameGroupCards.Sort();
+            for (int c = 0; c < 3; c++)
+            {
+                int check = 0;
+                for (int i = 0; i < sameGroupCards.Count; i++)
+                {
+                    if (Rules.Same_BonusEquate(sameGroupCards[i], discard_other + numbers[c, check] * 4))
+                    {
+                        indexes[check] = indexesOfHand[i];
+
+                        check++;
+                        if (check >= 2)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
         return true;
     }
 }
