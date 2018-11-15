@@ -14,6 +14,7 @@ public class GameManagerScript : MonoBehaviour {
     private DeckManager deckManager = new DeckManager();
     private List<GameObject>[] handObjects = new List<GameObject>[4];
     private List<GameObject>[] tableObjects = new List<GameObject>[4];
+    private List<GameObject>[] callObjects = new List<GameObject>[4];
     private List<GameObject> roundTextObjects = new List<GameObject>();
     private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];
     private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };     
@@ -39,18 +40,23 @@ public class GameManagerScript : MonoBehaviour {
     // Cards //
     private List<int>[] hands = new List<int>[4];
     private List<int>[] tables = new List<int>[4];
+    private List<CallCardsSet>[] callCards = new List<CallCardsSet>[4];
 
 	// Use this for initialization
 	void Start () {
 
         //Random.SetSeed(DateTime.Now.Millisecond);
+        Random.SetSeed(10002);
 
         for (int i = 0; i < 4; i++)
         {
             hands[i] = new List<int>();
             tables[i] = new List<int>();
+            callCards[i] = new List<CallCardsSet>();
+
             handObjects[i] = new List<GameObject>();
             tableObjects[i] = new List<GameObject>();
+            callObjects[i] = new List<GameObject>();
             scoreTextObjects[i] = new List<GameObject>();
         }
 
@@ -207,7 +213,7 @@ public class GameManagerScript : MonoBehaviour {
         }
 
         nextMethod = DrawCard;
-        timer = 1.0f;
+        timer = Times.Wait_DealToDraw();
     }
 
     private void ShowHand_Only(int player,bool show)
@@ -219,7 +225,7 @@ public class GameManagerScript : MonoBehaviour {
             Sprite sprite;
             if (show)
             {
-                sprite = cardImages[Rules.IdChangeSerialToCard(hands[player][i])];
+                sprite = cardImages[Rules.IdChangeSerialToCardImageId(hands[player][i])];
             }
             else
             {
@@ -278,7 +284,7 @@ public class GameManagerScript : MonoBehaviour {
         ai[turnPlayer].DecideDiscard(hands[turnPlayer]);
 
         nextMethod = Discard;
-        timer = 1.0f;
+        timer = Times.Wait_DrawToDiscard();
     }
 
     private void Discard()
@@ -290,16 +296,18 @@ public class GameManagerScript : MonoBehaviour {
         ShowOrHideHand_Only(turnPlayer);
         ShowTableCard_Only(turnPlayer);
 
-        nextMethod = NextTurn;
-        timer = 1.0f;
+        nextMethod = Call;
+        timer = Times.Wait_Call();
     }
 
     private void ShowTableCard_Only(int player)
     {
+        DestroyCardObjects(ref tableObjects[player]);
+
         for (int i = 0; i < tables[player].Count; i++)
         {
             GameObject card = new GameObject();
-            Sprite sprite = cardImages[Rules.IdChangeSerialToCard(tables[player][i])];
+            Sprite sprite = cardImages[Rules.IdChangeSerialToCardImageId(tables[player][i])];
             card.AddComponent<SpriteRenderer>().sprite = sprite;
             card.transform.localScale = Layouts.tableScales[player];
             card.transform.position =
@@ -316,6 +324,99 @@ public class GameManagerScript : MonoBehaviour {
         for(int i = 0; i < tables.Length; i++)
         {
             ShowTableCard_Only(i);
+        }
+    }
+
+    private void Call()
+    {
+        for (int p = 0; p < hands.Length; p++)
+        {
+            if (p != turnPlayer)
+            {
+                int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];
+                bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);
+                if (pon_kan[0])
+                {
+                    if (pon_kan[1])
+                    {
+
+                    }
+                    else
+                    {
+                        int[] cards = new int[3];
+                        int count = 0;
+
+                        for (int i = hands[p].Count - 1; 0 <= i; i--)
+                        {
+                            if (Rules.Same_BonusEquate(hands[p][i], discard))
+                            {
+                                cards[count] = hands[p][i];
+                                hands[p].RemoveAt(i);
+                                count++;
+                            }
+                        }
+                        cards[2] = discard;
+                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
+                        callCards[p].Add(new CallCardsSet());
+                        callCards[p][callCards[p].Count - 1].Pon(cards, p, turnPlayer);
+                    }
+                    ShowOrHideHand_Only(p);
+                    ShowTableCard_Only(turnPlayer);
+                    ShowCallCard_Only(p);
+
+                    ai[p].DecideDiscard(hands[p]);
+                    turnPlayer = p;
+
+                    nextMethod = Discard;
+                    timer = Times.Wait_DrawToDiscard();
+                    return;
+                }
+                if (pon_kan[1])
+                {
+                    return;
+                }
+            }
+        }
+            nextMethod = NextTurn;
+        timer = Times.Wait_NextTurn();
+    }
+
+    private void ShowCallCard_Only(int player)
+    {
+        DestroyCardObjects(ref callObjects[player]);
+
+        Vector2 position = new Vector2(Layouts.callOffsets[player].x, Layouts.callOffsets[player].y);
+        
+        for (int s = 0; s < callCards[player].Count; s++)
+        {
+            for (int i = 0; i< callCards[player][s].callCards.Count; i++)
+            {
+                CallCard callCard = callCards[player][s].callCards[i];
+                GameObject card = new GameObject();
+                Sprite sprite = cardImages[Rules.IdChangeSerialToCardImageId(callCard.card)];
+                card.AddComponent<SpriteRenderer>().sprite = sprite;
+                card.transform.localScale = Layouts.callScales[player];
+                float addDirection;
+                Vector3 addRotation ;
+                if (callCard.discardPlayer == player)
+                {
+                    addDirection = 0f;
+                    addRotation = new Vector3(0f, 0f, 0f);
+                }
+                else
+                {
+                    position += Layouts.callLineupRotatedAddDirections[player];
+                    addDirection = 1.0f;
+                    addRotation = new Vector3(0f, 0f, 90f);
+                }
+                card.transform.position = position;
+                position += 
+                    Layouts.callLineupDirections[player]+ Layouts.callLineupRotatedAddDirections[player]*addDirection;
+                card.transform.rotation =
+                    Quaternion.Euler(Layouts.callRotations[player]+addRotation);
+
+                callObjects[player].Add(card);
+            }
         }
     }
 
@@ -366,4 +467,36 @@ public class DeckManager
     }
 }
 
+public class CallCard
+{
+    public int card;
+    public int discardPlayer;
+}
 
+public class CallCardsSet
+{
+    public List<CallCard> callCards = new List<CallCard>();
+
+    public void Pon(int[] cardsId,int callPlayer, int discardPlayer)
+    {
+        int count = 0;
+        for(int i = 0; i < 3; i++)
+        {
+            CallCard callCard= new CallCard();
+
+            if ((i + callPlayer + 1) % 4 == discardPlayer)
+            {
+                callCard.card = cardsId[2];
+                callCard.discardPlayer = discardPlayer;
+            }
+            else
+            {
+                callCard.card = cardsId[count];
+                count++;
+                callCard.discardPlayer = callPlayer;
+            }
+
+            callCards.Add(callCard);
+        }
+    }
+}

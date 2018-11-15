@@ -77,4 +77,25 @@ public class Layouts
         { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,90f),
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
+
+    readonly static public Vector2[] callOffsets =
+    { new Vector2(7.5f, -4.5f) ,new Vector2(7.5f,4.5f),
+        new Vector2(-6.2f,4.5f),new Vector2(-7.5f,-2.75f)};
+
+    readonly static public Vector2[] callScales =
+        {new Vector2(0.9f,0.9f),new Vector2(0.6f,0.6f),
+        new Vector2(0.6f,0.6f),new Vector2(0.6f,0.6f)};
+
+    readonly static public Vector2[] callLineupDirections =
+        { new Vector2(-0.6f, 0f),new Vector2(0f,-0.405f) ,
+        new Vector2(0.405f,0f) ,new Vector2(0f,0.405f) };
+
+    readonly static public Vector2[] callLineupRotatedAddDirections =
+        { new Vector2(-0.12f, 0f),new Vector2(0f,-0.07f) ,
+        new Vector2(0.07f,0f) ,new Vector2(0f,0.07f) };
+
+    readonly static public Vector3[] callRotations =
+        { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,90f),
+        new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
+
 }
