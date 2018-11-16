@@ -20,15 +20,15 @@ public class Times{
     }
     public static float Wait_CallToDiscard()
     {
-        return 0.2f / speed;
+        return 0.5f / speed;
     }
     public static float Wait_Call()
     {
-        return 0.8f/speed;
+        return 0.9f/speed;
     }
     public static float Wait_NextTurn()
     {
-        return 0.2f/speed;
+        return 0.1f/speed;
     }
 	
 }

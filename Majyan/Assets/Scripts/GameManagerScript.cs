@@ -6,55 +6,66 @@ using UnityEngine.UI;
 
 public class GameManagerScript : MonoBehaviour {
 
-    // Objects //
-    public Sprite[] cardImages = new Sprite[38];
-    public Sprite[] fontImages_ja = new Sprite[6];
-    public Sprite[] fontImages_num = new Sprite[10];
-    public Sprite[] scoreIconImages = new Sprite[2];
-    private DeckManager deckManager = new DeckManager();
-    private List<GameObject>[] handObjects = new List<GameObject>[4];
-    private List<GameObject>[] tableObjects = new List<GameObject>[4];
-    private List<GameObject>[] callObjects = new List<GameObject>[4];
-    private List<GameObject> roundTextObjects = new List<GameObject>();
-    private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];
+    //メモ(完成後に変更)
+    //乱数のseedの取得方法
+    //プレイヤーの手牌のソートを無効化
+    //プレイヤー情報に合わせての牌表示の真偽値
+
+    // オブジェクト //
+    // 画像読み込み
+    public Sprite[] cardImages = new Sprite[38];        //牌画像
+    public Sprite[] fontImages_ja = new Sprite[6];      //フォント画像(日本語)
+    public Sprite[] fontImages_num = new Sprite[10];    //フォント画像(数字)
+    public Sprite[] scoreIconImages = new Sprite[2];    //点棒画像
+    // クラス
+    private DeckManager deckManager = new DeckManager();    //デッキ管理クラス
+    //ゲームオブジェクト(メモリ解放用)
+    private List<GameObject>[] handObjects = new List<GameObject>[4];       //手牌
+    private List<GameObject>[] tableObjects = new List<GameObject>[4];      //捨て牌
+    private List<GameObject>[] callObjects = new List<GameObject>[4];       //鳴き牌
+    private List<GameObject> roundTextObjects = new List<GameObject>();     //局数表示用テキスト
+    private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];  //得点表示用テキスト
+    //AI
     private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };     
 
-    // Constants //
-    private const int NULL_ID = -1000;
+    // 定数 //
+    private const int NULL_ID = -1000;  //nullとして扱う数値
 
-    // Variable //
-    private int[] scores = new int[4];
-    private int startPlayer;
-    private int round;
-    private int parentCount;
-    private int betCount;
-    private bool parentStay;
-    private bool increaseParentCount;
+    // 変数 //
+    private int[] scores = new int[4];  //得点
+    private int startPlayer;            //起家
+    private int round;                  //局数
+    private int parentCount;            //n本場
+    private int betCount;               //リーチ棒の数
+    private bool parentStay;            //連荘フラグ
+    private bool increaseParentCount;   //n本場増加フラグ
 
-    private int turnPlayer;
+    private int turnPlayer;     //手番プレイヤー
 
-    private delegate void NextMethod();
-    private NextMethod nextMethod;
-    private float timer;
+    private delegate void NextMethod();     
+    private NextMethod nextMethod;          //一定時間経過後に実行する関数
+    private float timer;                    //タイマー
 
-    private int seed;
+    private int seed;       //乱数のseed値(表示用)
 
     // Cards //
-    private List<int>[] hands = new List<int>[4];
-    private List<int>[] tables = new List<int>[4];
-    private List<CallCardsSet>[] callCards = new List<CallCardsSet>[4];
+    private List<int>[] hands = new List<int>[4];       //手牌
+    private List<int>[] tables = new List<int>[4];      //捨て牌
+    private List<CallCardsSet>[] callCards = new List<CallCardsSet>[4];     //鳴き牌
 
 	// Use this for initialization
 	void Start () {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        seed = DateTime.Now.Millisecond;
-        Random.SetSeed(10000+seed);
-        //kan:10006,10008,10012,10025
-        //ankan:10029,10033
-        //kakan:10048
-        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = "1" + seed;
+        seed = DateTime.Now.Millisecond;    //seed値決定
+        Random.SetSeed(10000+seed);         //seed値を入力
+                                            //明槓:10006,10008,10012,10025
+                                            //暗槓:10029,10033
+                                            //加槓:10048
 
+        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = "1" + seed;  //seed値を表示
+
+        //リストの初期化
         for (int i = 0; i < 4; i++)
         {
             hands[i] = new List<int>();
@@ -67,79 +78,87 @@ public class GameManagerScript : MonoBehaviour {
             scoreTextObjects[i] = new List<GameObject>();
         }
 
-        Initialize_NewGame();
+        Initialize_NewGame();       //ゲーム開始時用の初期化処理
 	}
 	
 	// Update is called once per frame
 	void Update () {
 
-        if (nextMethod != null)
+        if (nextMethod != null)         //一定時間経過後に実行する関数が存在する場合
         {
-            timer -= Time.deltaTime;
+            timer -= Time.deltaTime;    //タイマーを進める
 
-            if (timer <= 0)
+            if (timer <= 0)             //待ち時間が終了している場合
             {
-                nextMethod();
+                nextMethod();           //格納されていた関数を実行
             }
         }
 	}
 
+    //ゲーム開始時の初期化
     private void Initialize_NewGame()
     {
+        //デッキ管理クラスにゲーム開始時用の初期化処理を実行させる
         deckManager.Initialize_NewGame();
 
+        //得点をリセット
         for(int i = 0; i < scores.Length; i++)
         {
             scores[i] = 25000;
         }
 
-        startPlayer = Random.Xor128_next(4);
-        round = 0;
-        parentCount = 0;
-        betCount = 0;
-        parentStay = true;
-        increaseParentCount = false;
+        startPlayer = Random.Xor128_next(4);    //起家を決定
+        round = 0;          //局数
+        parentCount = 0;    //n本場
+        betCount = 0;       //リーチ棒
+        parentStay = true;  //親を変更しない(Initialize_NextRound()用)
+        increaseParentCount = false;    //n本場を増加しない(Initialize_NextRound()用)
 
-        nextMethod = null;
-        timer = 0f;
+        timer = 0f;         //タイマー初期化
 
-        Initialize_NextRound();
+        Initialize_NextRound();     //局単位の初期化処理
     }
 
+    //局単位での初期化処理
     private void Initialize_NextRound()
     {
-        deckManager.Initialize_NextRound();
+        //デッキ管理クラスに局単位での初期化処理を実行させる
+        deckManager.Initialize_NextRound();     
 
+        //手牌と捨て牌を初期化
         for (int i = 0; i < 4; i++)
         {
             hands[i].Clear();
             tables[i].Clear();
         }
 
+        //親が流れた場合は局数のカウントを追加
         if (parentStay == false)
         {
             round++;
         }
 
-        if (increaseParentCount)
+        if (increaseParentCount)    //フラグ
         {
-            parentCount++;
+            parentCount++;      //n本場を増加
         }
         else
         {
-            parentCount = 0;
+            parentCount = 0;    //n本場をリセット
         }
 
-        ShowRound();
+        ShowRound();        //局数表示
 
-        turnPlayer = Rules.HouseIdToPlayerId(startPlayer, round, 0);
+        turnPlayer = Rules.HouseIdToPlayerId(startPlayer, round, 0);    //東家のプレイヤーの手番で開始
 
-        nextMethod= Deal;
-        timer = 0f;
+        nextMethod= Deal;       //配牌
+        timer = 0f;             //待ち時間を設定
     }
 
+    //局数表示
     private void ShowRound()
     {
+        //表示する文字を格納
         Sprite[] texts = new Sprite[9];
         texts[0]= fontImages_ja[round / 4];
         texts[1]= fontImages_num[round % 4 + 1];
@@ -151,55 +170,67 @@ public class GameManagerScript : MonoBehaviour {
         texts[7] = fontImages_ja[5];
         texts[8] = fontImages_num[betCount%10];
 
+        //ゲームオブジェクトとしてパラメータを設定＆文字を表示
         for(int i = 0; i < texts.Length; i++)
         {
             GameObject text = new GameObject();
-            text.AddComponent<SpriteRenderer>().sprite = texts[i];
-            text.transform.localScale = Layouts.roundTextScales[i];
-            text.transform.position = Layouts.roundTextPositons[i];
-            text.transform.rotation = Quaternion.Euler(Layouts.roundTextRotations[i]);
+            text.AddComponent<SpriteRenderer>().sprite = texts[i];      //フォント画像を格納
+            text.transform.localScale = Layouts.roundTextScales[i];     //大きさを決定
+            text.transform.position = Layouts.roundTextPositons[i];     //表示場所を決定
+            text.transform.rotation = Quaternion.Euler(Layouts.roundTextRotations[i]);      //角度を指定
 
-            roundTextObjects.Add(text);
+            roundTextObjects.Add(text);     //メモリ解放用のリストに格納
         }
 
-
-        ShowScores_All();
+        ShowScores_All();       //全員分の得点を表示
     }
 
+    //得点表示(基底関数)
     private void ShowScore(int player)
     {
+        //方角表示
         GameObject compass = new GameObject();
-        compass.AddComponent<SpriteRenderer>().sprite = fontImages_ja[Rules.PlayerIdToHouseId(startPlayer,round,player)];
-        compass.transform.localScale = Layouts.scoreTextScales[player];
-        compass.transform.position = Layouts.scoreTextOffsets[player];
-        compass.transform.rotation = Quaternion.Euler(Layouts.scoreTextRotations[player]);
+        compass.AddComponent<SpriteRenderer>().sprite =
+            fontImages_ja[Rules.PlayerIdToHouseId(startPlayer,round,player)];       //フォント画像を格納
+        compass.transform.localScale = Layouts.scoreTextScales[player];             //大きさを決定
+        compass.transform.position = Layouts.scoreTextOffsets[player];              //表示場所を決定
+        compass.transform.rotation = Quaternion.Euler(Layouts.scoreTextRotations[player]);      //角度を指定
 
-        scoreTextObjects[player].Add(compass);
+        scoreTextObjects[player].Add(compass);      //メモリ解放用のリストに格納
 
 
-        bool zero = false;
-        int score = scores[player];
-
+        //得点表示
+        bool zero = false;              //頭の0を表示しないためのフラグ
+        int score = scores[player];     //得点を取得
         for (int i=0, n = 100000; n >= 1;i++, n /= 10)
+        //i:表示場所決定用のカウンタ
+        //n:指定の桁の数値を1桁に変換するための数値
         {
             if (zero || score / n > 0 || n == 1)
+                //頭の0以外なら表示
+                //1の位なら無条件に表示
             {
-                zero = true;
+                zero = true;    //頭の0が終わったことを示すフラグ
 
+                //数値として表示
                 GameObject text = new GameObject();
-                text.AddComponent<SpriteRenderer>().sprite = fontImages_num[score / n];
-                text.transform.localScale = Layouts.scoreTextScales[player];
+                text.AddComponent<SpriteRenderer>().sprite = fontImages_num[score / n];     //表示する数字を決定
+                text.transform.localScale = Layouts.scoreTextScales[player];    //大きさを決定
                 text.transform.position = 
                     Layouts.scoreTextOffsets[player]+
-                    Layouts.scoreTextCompassSpaces[player]+Layouts.scoreTextLineupDirections[player]*i;
-                text.transform.rotation = Quaternion.Euler(Layouts.scoreTextRotations[player]);
+                    Layouts.scoreTextCompassSpaces[player]+
+                    Layouts.scoreTextLineupDirections[player]*i;            //表示場所を決定
+                text.transform.rotation = 
+                    Quaternion.Euler(Layouts.scoreTextRotations[player]);   //角度を決定
 
-                score -= (score / n) * n;
-                scoreTextObjects[player].Add(text);
+                score -= (score / n) * n;               //表示した桁を0にする
+
+                scoreTextObjects[player].Add(text);     //メモリ解放用のリストに格納
             }
         }
     }    
 
+    //全員分の得点を表示(派生関数)
     private void ShowScores_All()
     {
         for(int i = 0; i < scores.Length; i++)
@@ -208,72 +239,86 @@ public class GameManagerScript : MonoBehaviour {
         }
     }
     
+    //配牌
     private void Deal()
     {
+        //各プレイヤーに13枚ずつ牌を配る
         for (int p = 0; p < hands.Length; p++) {
             for (int i = 0; i < 13;i++)
             {
-                hands[p].Add(deckManager.DrawCard());
+                hands[p].Add(deckManager.DrawCard());   //山の一番上の牌を手牌として取得
             }
 
-            hands[p].Sort();
+            hands[p].Sort();        //手牌をソートする
 
-            ShowOrHideHand_Only(p);
+            ShowOrHideHand_Only(p); //手牌を表示
         }
 
-        nextMethod = DrawCard;
-        timer = Times.Wait_DealToDraw();
+        nextMethod = DrawCard;              //一定時間経過後に牌を引く
+        timer = Times.Wait_DealToDraw();    //タイマーを設定
     }
 
+    //プレイヤー1名分の手牌を表示(基底関数)
     private void ShowHand_Only(int player,bool show)
     {
-        DestroyCardObjects(ref handObjects[player]);
-        for (int i = 0; i < hands[player].Count; i++)
+        DestroyCardObjects(ref handObjects[player]);    //表示している手牌のゲームオブジェクトを削除
+        for (int i = 0; i < hands[player].Count; i++)   
         {
             GameObject card = new GameObject();
-            Sprite sprite;
-            if (show)
+            Sprite sprite;  
+            if (show)   
             {
-                sprite = cardImages[Rules.IdChangeSerialToCardImageId(hands[player][i])];
+                sprite = 
+                    cardImages[Rules.IdChangeSerialToCardImageId(hands[player][i])];    //表向きの牌画像
             }
             else
             {
-                sprite = cardImages[37];
+                sprite = cardImages[37];    //裏向きの牌画像
             }
-            card.AddComponent<SpriteRenderer>().sprite = sprite;
-            card.transform.localScale = Layouts.handScales[player];
+            card.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
+            card.transform.localScale = Layouts.handScales[player];     //大きさを決定
             card.transform.position = Layouts.handOffsets[player]+Layouts.handLineupDirections[player]*i;
-            card.transform.rotation = Quaternion.Euler(Layouts.handRotations[player]);
-            handObjects[player].Add(card);
+            card.transform.rotation = 
+                Quaternion.Euler(Layouts.handRotations[player]);    //角度を決定
+
+            handObjects[player].Add(card);      //メモリ解放用のリストに格納
         }
     }
 
+    //プレイヤー情報(1名分)に合わせて牌の表裏を考慮して手牌を表示(派生関数)
     private void ShowOrHideHand_Only(int player)
     {
-        bool[] shows = { true, true, true, true };
-        ShowHand_Only(player, shows[player]);
+        bool[] shows = { true, true, true, true };      //人間以外の手牌は裏向き
+
+        ShowHand_Only(player, shows[player]);           //真偽値に応じた牌の向きで表示
     }
 
+    //全員分の手牌を表裏を考慮して表示(派生関数)
     private void ShowAndHideHands(bool[] shows)
     {
         for (int i = 0; i < hands.Length; i++)
         {
-            ShowHand_Only(i, true);
+            ShowHand_Only(i, shows[i]);
         }
     }
 
+    //全員分の手牌を表向きで表示
     private void ShowHands_All()
     {
         bool[] shows = { true, true, true, true};
-        ShowAndHideHands(shows);
+
+        ShowAndHideHands(shows);    //真偽値リストに基づいて表示
     }
 
+    //プレイヤー情報に合わせて牌の表裏を考慮して全員分の手牌を表示(派生関数)
     private void ShowAndHideHands_Default()
     {
         bool[] shows = { true, false, false, false };
-        ShowAndHideHands(shows);
+
+        ShowAndHideHands(shows);    //真偽値リストに基づいて表示
     }
 
+    //牌のゲームオブジェクトを削除
     private void DestroyCardObjects(ref List<GameObject> cardObjects)
     {
         for (int i = cardObjects.Count-1; 0 <= i; i--)
@@ -281,53 +326,60 @@ public class GameManagerScript : MonoBehaviour {
             Destroy(cardObjects[i]);
         }
 
-        cardObjects.Clear();
+        cardObjects.Clear();    //ゲームオブジェクトの格納変数を初期化
     }
 
+    //牌を引く
     private void DrawCard()
     {
-        hands[turnPlayer].Add(deckManager.DrawCard());
+        hands[turnPlayer].Add(deckManager.DrawCard());      //手番のプレイヤーの手牌に追加
 
-        ShowHand_Only(turnPlayer, true);
+        ShowOrHideHand_Only(turnPlayer);        //手番プレイヤーの手牌を表示
 
-        ai[turnPlayer].DecideDiscard(hands[turnPlayer]);
+        ai[turnPlayer].DecideDiscard(hands[turnPlayer]);    //AIに捨て牌を決定させる
 
-        nextMethod = Discard;
-        timer = Times.Wait_DrawToDiscard();
+        nextMethod = Discard;       //捨て牌をする
+        timer = Times.Wait_DrawToDiscard();     //タイマーを設定
     }
 
+    //捨て牌
     private void Discard()
     {
-        int discardIndex = ai[turnPlayer].GetDiscord();
-        tables[turnPlayer].Add(hands[turnPlayer][discardIndex]);
-        hands[turnPlayer].RemoveAt(discardIndex);
+        int discardIndex = ai[turnPlayer].GetDiscard();     //捨て牌の手牌内での位置情報を取得
+        tables[turnPlayer].Add(hands[turnPlayer][discardIndex]);    //捨て牌として追加
+        hands[turnPlayer].RemoveAt(discardIndex);       //手牌から取り除く
 
-        ShowOrHideHand_Only(turnPlayer);
-        ShowTableCard_Only(turnPlayer);
+        ShowOrHideHand_Only(turnPlayer);    //手牌を表示
+        ShowTableCard_Only(turnPlayer);     //捨て牌を表示
 
-        nextMethod = Call_Rob;
-        timer = Times.Wait_Call();
+        nextMethod = CallRob;      //鳴き
+        timer = Times.Wait_Call();  //タイマーを設定
     }
 
+    //プレイヤー1名分の捨て牌を表示(基底関数)
     private void ShowTableCard_Only(int player)
     {
-        DestroyCardObjects(ref tableObjects[player]);
+        DestroyCardObjects(ref tableObjects[player]);       //捨て牌のゲームオブジェクトを削除
 
         for (int i = 0; i < tables[player].Count; i++)
         {
             GameObject card = new GameObject();
-            Sprite sprite = cardImages[Rules.IdChangeSerialToCardImageId(tables[player][i])];
-            card.AddComponent<SpriteRenderer>().sprite = sprite;
-            card.transform.localScale = Layouts.tableScales[player];
+            Sprite sprite = 
+                cardImages[Rules.IdChangeSerialToCardImageId(tables[player][i])];   //画像を取得
+            card.AddComponent<SpriteRenderer>().sprite = sprite;            //画像を格納
+            card.transform.localScale = Layouts.tableScales[player];        //大きさを決定
             card.transform.position =
                 Layouts.tableOffsets[player] +
                 Layouts.tableLineupNextDirections[player] * (i%6)+
-                Layouts.tableLineupNewLineDirections[player] * (i / 6);
-            card.transform.rotation = Quaternion.Euler(Layouts.tableRotations[player]);
-            tableObjects[player].Add(card);
+                Layouts.tableLineupNewLineDirections[player] * (i / 6);     //表示場所を決定
+            card.transform.rotation = 
+                Quaternion.Euler(Layouts.tableRotations[player]);           //角度を決定
+
+            tableObjects[player].Add(card);     //メモリ解放用のリストに格納
         }
     }
 
+    //全員分の捨て牌を表示(派生関数)
     private void ShowTableCards_All()
     {
         for(int i = 0; i < tables.Length; i++)
@@ -336,203 +388,218 @@ public class GameManagerScript : MonoBehaviour {
         }
     }
 
-    private void Call_Rob()
+    //鳴き
+    private void CallRob()
     {
-        int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];
+        int discard = tables[turnPlayer][tables[turnPlayer].Count - 1];     //捨て牌
 
         for (int p = 0; p < hands.Length; p++)
         {
-            if (p != turnPlayer)
+            if (p != turnPlayer)    //自分の捨て牌は除く
             {
-                bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);
+                bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);  //ポン、カンが可能かを取得
 
-                if (pon_kan[1])
+                if (pon_kan[1])     //カン可能
                 {
-                    if (ai[p].DecideKan(hands[p]))
+                    if (ai[p].DecideKan(hands[p]))      //AIがカンを行うと判断した場合
                     {
-                        int[] cards = new int[4];
-                        int count = 0;
+                        int[] cards = new int[4];       //鳴き牌格納用
+                        int count = 0;      //鳴き牌探索カウンタ
 
                         for (int i = hands[p].Count - 1; 0 <= i; i--)
                         {
-                            if (Rules.Same_BonusEquate(hands[p][i], discard))
+                            if (Rules.Same_BonusEquate(hands[p][i], discard))   //捨て牌と同じ牌の場合
                             {
-                                cards[count] = hands[p][i];
-                                hands[p].RemoveAt(i);
-                                count++;
+                                cards[count] = hands[p][i];     //鳴き牌として格納
+                                hands[p].RemoveAt(i);           //手牌から取り除く
+                                count++;                        //探索カウンタを増加
                             }
                         }
 
-                        cards[3] = discard;
-                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
-                        callCards[p].Add(new CallCardsSet());
-                        callCards[p][callCards[p].Count - 1].Kan(cards, p, turnPlayer);
+                        cards[3] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
+                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);          //捨て牌から取り除く
+                        callCards[p].Add(new CallCardsSet());       //鳴き牌を追加
+                        callCards[p][callCards[p].Count - 1].Kan(cards, p, turnPlayer);     //カンとして格納
 
-                        ShowOrHideHand_Only(p);
-                        ShowTableCard_Only(turnPlayer);
-                        ShowCallCard_Only(p);
-
-                        ai[p].DecideDiscard(hands[p]);
-                        turnPlayer = p;
-
-                        nextMethod = Discard;
-                        timer = Times.Wait_DrawToDiscard();
+                        CallRob_End(p);     //鳴き終了処理
                         return;
                     }
                 }
-                if (pon_kan[0])
+                if (pon_kan[0])         //ポン可能
                 {
-                    bool bonus=true;
+                    bool bonus = true;    //鳴き牌に赤ドラを含めるかのフラグ
 
-                    if (ai[p].DecidePon(hands[p],ref bonus))
+                    if (ai[p].DecidePon(hands[p], ref bonus))    //AIがポンを行うと判断した場合
                     {
-                        int[] cards = new int[3];
-                        int count = 0;
+                        int[] cards = new int[3];   //鳴き牌格納用
+                        int count = 0;      //鳴き牌探索カウンタ
 
                         for (int i = hands[p].Count - 1; 0 <= i; i--)
                         {
-                            if (Rules.Same_BonusEquate(hands[p][i], discard))
+                            if (Rules.Same_BonusEquate(hands[p][i], discard))   //捨て牌と同じ牌の場合
                             {
-                                cards[count] = hands[p][i];
-                                hands[p].RemoveAt(i);
-                                count++;
+                                cards[count] = hands[p][i];     //鳴き牌として格納
+                                hands[p].RemoveAt(i);           //手牌から取り除く
+                                count++;                        //探索カウンタを増加
                             }
                         }
-                        if (count >= 3)
+
+                        if (count >= 3)     //鳴き牌の選択肢が複数の場合
                         {
-                            int indexAdd = 0;
-                            if (bonus == false)
+                            int bonusIndex;     //赤ドラの扱い
+
+                            if (bonus == false) //赤ドラを鳴き牌に含めない場合
                             {
-                                indexAdd = 2;
+                                bonusIndex = 2; //鳴き牌格納用配列の末尾へ格納
                             }
+                            else
+                            {
+                                bonusIndex = 0; //鳴き牌格納用配列の先頭へ格納
+                            }
+
                             for (int i = 0; i < cards.Length; i++)
                             {
-                                if (Rules.Bonus5(cards[i]))
+                                if (Rules.Bonus5(cards[i]))     //赤ドラの場合
                                 {
-                                    int keep = cards[0 + indexAdd];
-                                    cards[0 + indexAdd] = cards[i];
+                                    //赤ドラとその他の牌を入れ替える
+                                    int keep = cards[bonusIndex];
+                                    cards[bonusIndex] = cards[i];
                                     cards[i] = keep;
                                     break;
                                 }
                             }
                         }
 
-                        cards[2] = discard;
-                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
-                        callCards[p].Add(new CallCardsSet());
-                        callCards[p][callCards[p].Count - 1].Pon(cards, p, turnPlayer);
+                        cards[2] = discard;     //鳴き牌格納用配列の末尾を捨て牌で上書き
+                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌を取り除く
+                        callCards[p].Add(new CallCardsSet());   //鳴き牌を追加
+                        callCards[p][callCards[p].Count - 1].Pon(cards, p, turnPlayer);     //ポンとして格納
 
-                        ShowOrHideHand_Only(p);
-                        ShowTableCard_Only(turnPlayer);
-                        ShowCallCard_Only(p);
+                        CallRob_End(p);     //鳴き終了処理
 
-                        ai[p].DecideDiscard(hands[p]);
-                        turnPlayer = p;
-
-                        nextMethod = Discard;
-                        timer = Times.Wait_DrawToDiscard();
                         return;
                     }
                 }
             }
         }
 
-        int tiPlayer = (turnPlayer + 1) % 4;
-        if (Rules.CanTi(hands[tiPlayer], discard))
+        int tiPlayer = (turnPlayer + 1) % 4;    //チーが可能なプレイヤー
+        if (Rules.CanTi(hands[tiPlayer], discard))  //チーが可能な場合
         {
-            int[] indexes = new int[2];
-            if (ai[tiPlayer].DecideTi(hands[tiPlayer], ref indexes,discard))
+            int[] indexes = new int[2];     //鳴き牌とする牌の手牌内での位置情報の格納用
+            if (ai[tiPlayer].DecideTi(hands[tiPlayer], ref indexes, discard))    //AIがチーをすると判断した場合
             {
+                //牌の並び順を降順にする
                 Array.Sort(indexes);
                 Array.Reverse(indexes);
-                    int[] cards = new int[3];
 
-                    for (int i = 0; i<indexes.Length; i++)
-                    {
-                            cards[i] = hands[tiPlayer][indexes[i]];
-                            hands[tiPlayer].RemoveAt(indexes[i]);
-                    }
+                int[] cards = new int[3];   //鳴き牌格納用
 
-                    cards[2] = discard;
-                    tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);
-                    callCards[tiPlayer].Add(new CallCardsSet());
-                    callCards[tiPlayer][callCards[tiPlayer].Count - 1].Ti(cards, tiPlayer, turnPlayer);
-
-                    ShowOrHideHand_Only(tiPlayer);
-                    ShowTableCard_Only(turnPlayer);
-                    ShowCallCard_Only(tiPlayer);
-
-                    ai[tiPlayer].DecideDiscard(hands[tiPlayer]);
-                    turnPlayer = tiPlayer;
-
-                    nextMethod = Discard;
-                    timer = Times.Wait_DrawToDiscard();
-                    return;
+                for (int i = 0; i < indexes.Length; i++)
+                {
+                    cards[i] = hands[tiPlayer][indexes[i]];     //鳴き牌として格納
+                    hands[tiPlayer].RemoveAt(indexes[i]);       //手牌から取り除く
                 }
+
+                cards[2] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
+                tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌から取り除く
+                callCards[tiPlayer].Add(new CallCardsSet());    //鳴き牌を追加
+                callCards[tiPlayer][callCards[tiPlayer].Count - 1].Ti(cards, tiPlayer, turnPlayer); //チーとして格納
+
+                CallRob_End(tiPlayer);      //鳴き終了処理
+
+                return;
+            }
         }
 
-        nextMethod = NextTurn;
-        timer = Times.Wait_NextTurn();
+        //鳴きが無ければ実行される
+        nextMethod = NextTurn;          //手番移動処理
+        timer = Times.Wait_NextTurn();  //タイマーを設定
     }
 
+    //鳴き終了処理
+    private void CallRob_End(int callPlayer)
+    {
+        ShowOrHideHand_Only(callPlayer);    //手牌を表示
+        ShowTableCard_Only(turnPlayer);     //捨て牌を表示
+        ShowCallCard_Only(callPlayer);      //鳴き牌を表示
+
+        ai[callPlayer].DecideDiscard(hands[callPlayer]);    //AIに捨て牌を決定させる
+        turnPlayer = callPlayer;                            //手番を移動
+
+        nextMethod = Discard;               //捨て牌をする
+        timer = Times.Wait_DrawToDiscard(); //タイマーを設定
+    }
+
+    //鳴き牌表示
     private void ShowCallCard_Only(int player)
     {
-        DestroyCardObjects(ref callObjects[player]);
+        DestroyCardObjects(ref callObjects[player]);    //表示している手牌のゲームオブジェクトを削除
 
-        Vector2 position = new Vector2(Layouts.callOffsets[player].x, Layouts.callOffsets[player].y);
+        Vector2 position = 
+            new Vector2(Layouts.callOffsets[player].x, Layouts.callOffsets[player].y);  //表示位置の初期地点
         
         for (int s = 0; s < callCards[player].Count; s++)
         {
             for (int i = 0; i< callCards[player][s].callCards.Count; i++)
             {
-                CallCard callCard = callCards[player][s].callCards[i];
+                CallCard callCard = callCards[player][s].callCards[i];  //牌の情報を取得
                 GameObject card = new GameObject();
-                Sprite sprite = cardImages[Rules.IdChangeSerialToCardImageId(callCard.card)];
-                card.AddComponent<SpriteRenderer>().sprite = sprite;
-                card.transform.localScale = Layouts.callScales[player];
-                float addDirection;
-                Vector3 addRotation ;
-                if (callCard.discardPlayer == player)
+                Sprite sprite = 
+                    cardImages[Rules.IdChangeSerialToCardImageId(callCard.card)];   //牌の画像を取得
+                card.AddComponent<SpriteRenderer>().sprite = sprite;        //画像を格納
+                card.transform.localScale = Layouts.callScales[player];     //大きさを決定
+
+                float addDirection;     //回転した牌のための余白を用意するかどうかのフラグ
+                Vector3 addRotation ;   //回転した牌の場合に追加する回転量
+                if (callCard.discardPlayer == player)   
                 {
+                    //自分の鳴き牌の場合は回転はなし
                     addDirection = 0f;
                     addRotation = new Vector3(0f, 0f, 0f);
                 }
                 else
                 {
-                    position += Layouts.callLineupRotatedAddDirections[player];
-                    addDirection = 1.0f;
-                    addRotation = new Vector3(0f, 0f, 90f);
+                    //他家の捨て牌の場合は回転させる
+                    position += Layouts.callLineupRotatedAddDirections[player]; //回転分の座標補正
+                    addDirection = 1.0f;    //余白用意フラグを立てる
+                    addRotation = new Vector3(0f, 0f, 90f);     //回転させる
                 }
-                card.transform.position = position;
+                card.transform.position = position; //牌の表示位置を決定
+                //回転の有無を考慮して次の牌の基本位置を決定
                 position += 
-                    Layouts.callLineupDirections[player]+ Layouts.callLineupRotatedAddDirections[player]*addDirection;
+                    Layouts.callLineupDirections[player]+ 
+                    Layouts.callLineupRotatedAddDirections[player]*addDirection;
                 card.transform.rotation =
-                    Quaternion.Euler(Layouts.callRotations[player]+addRotation);
+                    Quaternion.Euler(Layouts.callRotations[player]+addRotation);    //牌の角度を決定
 
-                callObjects[player].Add(card);
+                callObjects[player].Add(card);  //メモリ解放用のリストに格納
             }
         }
     }
 
+    //手番移動処理
     private void NextTurn()
     {
-        turnPlayer = (turnPlayer + 1) % 4;
-        DrawCard();
+        turnPlayer = (turnPlayer + 1) % 4;  //手番移動
+        DrawCard();     //牌を引く
     }
 }
 
 public class DeckManager
 {
-    // Variable //
-    private int deckUsedIndex;
+    // 変数 //
+    private int deckUsedIndex;  //使用済みの牌の位置
 
     // Cards //
-    private int[] deck = new int[136];
+    private int[] deck = new int[136];  //牌山
     /*private int[] deck = {0,1,2,4,5,6,8,9,10,12,13,14,16,
         20,21,22,24,25,26,28,29,30,32,33,34,36,
     40,41,42,44,45,46,48,49,50,52,53,54,56,
     60,61,62,64,65,66,68,69,70,72,73,74,76,
     3,7,11,15,17,18,19,23,27,31,35,37,38,39,43,47,51,55,57,58,59,63,67,71,75,77,78,79,80};*/
+
+        //ゲーム開始時の初期化
     public void Initialize_NewGame()
     {
         for (int i = 0; i < deck.Length; i++)
@@ -541,13 +608,15 @@ public class DeckManager
         }
     }
 
+    //新しい局の開始時の初期化
     public void Initialize_NextRound()
     {
-        deckUsedIndex = -1;
+        deckUsedIndex = -1;     //使用済みの牌は存在しないので-1
 
-        Shuffle();
+        Shuffle();  //シャッフル
     }
 
+    //シャッフル
     private void Shuffle()
     {
         for (int i = 0; i < deck.Length; i++)
@@ -559,60 +628,68 @@ public class DeckManager
         }
     }
 
+    //牌を引く
     public int DrawCard()
     {
-        deckUsedIndex++;
+        deckUsedIndex++;    //未使用の牌の最後のものを使用済みの牌とする
         return deck[deckUsedIndex];
     }
 }
 
 public class CallCard
 {
+    //鳴き牌の情報
     public int card;
     public int discardPlayer;
 }
 
 public class CallCardsSet
 {
-    public List<CallCard> callCards = new List<CallCard>();
+    public List<CallCard> callCards = new List<CallCard>();     //鳴き牌による1面子
 
+    //ポン
     public void Pon(int[] cardsId,int callPlayer, int discardPlayer)
     {
-        int count = 0;
-        for(int i = 0; i < 3; i++)
+        int count = 0;  //手牌からの牌のカウンタ
+        for (int i = 0; i < 3; i++)
         {
             CallCard callCard= new CallCard();
 
-            if ((i + callPlayer + 1) % 4 == discardPlayer)
+            if ((i + callPlayer + 1) % 4 == discardPlayer)  
             {
+                //捨て牌の場合は末尾の情報を用いる
                 callCard.card = cardsId[2];
                 callCard.discardPlayer = discardPlayer;
             }
             else
             {
+                //手牌からの牌の場合はカウンタに従って情報を取得
                 callCard.card = cardsId[count];
                 count++;
                 callCard.discardPlayer = callPlayer;
             }
 
-            callCards.Add(callCard);
+            callCards.Add(callCard);    //牌情報を格納
         }
     }
 
+    //カン
     public void Kan(int[] cardsId, int callPlayer, int discardPlayer)
     {
-        int count = 0;
+        int count = 0;  //手牌からの牌のカウンタ
         for (int i = 0; i < 4; i++)
         {
             CallCard callCard = new CallCard();
 
             if ((i + callPlayer + 1) % 4 == discardPlayer)
             {
+                //捨て牌の場合は末尾の情報を用いる
                 callCard.card = cardsId[3];
                 callCard.discardPlayer = discardPlayer;
             }
             else
             {
+                //手牌からの牌の場合はカウンタに従って情報を取得
                 callCard.card = cardsId[count];
                 count++;
                 callCard.discardPlayer = callPlayer;
@@ -620,35 +697,40 @@ public class CallCardsSet
 
             if (i >= 3)
             {
+                //位置調整のために最後の牌のみ間に入れる
                 callCards.Insert(1, callCard);
             }
             else
             {
+                //牌情報を格納
                 callCards.Add(callCard);
             }
         }
     }
 
+    //チー
     public void Ti(int[] cardsId, int callPlayer, int discardPlayer)
     {
-        int count = 0;
+        int count = 0;  //手牌からの牌のカウンタ
         for (int i = 0; i < 3; i++)
         {
             CallCard callCard = new CallCard();
 
             if ((i + callPlayer + 1) % 4 == discardPlayer)
             {
+                //捨て牌の場合は末尾の情報を用いる
                 callCard.card = cardsId[2];
                 callCard.discardPlayer = discardPlayer;
             }
             else
             {
+                //手牌からの牌の場合はカウンタに従って情報を取得
                 callCard.card = cardsId[count];
                 count++;
                 callCard.discardPlayer = callPlayer;
             }
 
-            callCards.Add(callCard);
+            callCards.Add(callCard);    //牌情報を格納
         }
     }
 }
