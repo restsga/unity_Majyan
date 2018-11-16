@@ -4,15 +4,22 @@ using UnityEngine;
 
 abstract public class AI {
 
-    protected int discard;
+    protected int discard_index;
+    protected int kan_cardId;
 
     public abstract void DecideDiscard(List<int> hand);
     public abstract bool DecidePon(List<int> hand,ref bool bonus);
     public abstract bool DecideTi(List<int> hand, ref int[] indexes,int discard_other);
-    public abstract bool DecideKan(List<int> hand);
+    public abstract bool DecideOpenKan(List<int> hand);
+    public abstract bool DecideClosedKan(List<int> hand);
 
-    public int GetDiscard()
+    public int GetDiscardIndex()
     {
-        return discard;
+        return discard_index;
+    }
+
+    public int GetKanCardId()
+    {
+        return kan_cardId;
     }
 }

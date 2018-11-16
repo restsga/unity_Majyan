@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,17 +12,12 @@ public class Draw_Discard:AI {
 
     public override void DecideDiscard(List<int> hand)
     {
-        discard= hand.Count - 1;
+        discard_index= hand.Count - 1;
     }
 
     public override bool DecidePon(List<int> hand, ref bool bonus)
     {
         bonus = true;
-        return true;
-    }
-
-    public override bool DecideKan(List<int> hand)
-    {
         return true;
     }
 
@@ -60,6 +56,47 @@ public class Draw_Discard:AI {
                 }
             }
         }
+        return true;
+    }
+
+    public override bool DecideOpenKan(List<int> hand)
+    {
+        return true;
+    }
+
+    public override bool DecideClosedKan(List<int> hand)
+    {
+        int[] sortedHand = new int[hand.Count];     //元のリストを変更しないためのコピー
+
+        //リストから編集用の配列に情報を複製
+        for (int i = 0; i < hand.Count; i++)
+        {
+            sortedHand[i] = hand[i];
+        }
+
+        Array.Sort(sortedHand);     //並べ替え
+
+        int chain = 1;
+
+        //4枚以上同じ牌が連続するか判定
+        for (int i = 1; i < sortedHand.Length; i++)
+        {
+            if (Rules.Same_BonusEquate(sortedHand[i - 1], sortedHand[i]))
+            {
+                chain++;
+
+                if (chain >= 4)
+                {
+                    kan_cardId = sortedHand[i];
+                    break;
+                }
+            }
+            else
+            {
+                chain = 1;
+            }
+        }
+
         return true;
     }
 }
