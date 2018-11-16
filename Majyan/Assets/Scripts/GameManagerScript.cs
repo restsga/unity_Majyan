@@ -11,6 +11,9 @@ public class GameManagerScript : MonoBehaviour {
     //プレイヤーの手牌のソートを無効化
     //プレイヤー情報に合わせての牌表示の真偽値
 
+        //カンドラ実装時に変更
+        //嶺上牌を引く
+
     // オブジェクト //
     // 画像読み込み
     public Sprite[] cardImages = new Sprite[38];        //牌画像
@@ -57,13 +60,14 @@ public class GameManagerScript : MonoBehaviour {
 	void Start () {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        seed = DateTime.Now.Millisecond;    //seed値決定
+        seed = 802;
+        //seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000+seed);         //seed値を入力
                                             //明槓:10006,10008,10012,10025
                                             //暗槓:10029,10033
                                             //加槓:10048
 
-        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = "1" + seed;  //seed値を表示
+        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
 
         //リストの初期化
         for (int i = 0; i < 4; i++)
@@ -273,7 +277,7 @@ public class GameManagerScript : MonoBehaviour {
             }
             else
             {
-                sprite = cardImages[37];    //裏向きの牌画像
+                sprite = cardImages[cardImages.Length-1];    //裏向きの牌画像
             }
             card.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
             card.transform.localScale = Layouts.handScales[player];     //大きさを決定
@@ -334,7 +338,24 @@ public class GameManagerScript : MonoBehaviour {
     {
         hands[turnPlayer].Add(deckManager.DrawCard());      //手番のプレイヤーの手牌に追加
 
+        DrawCommon();       //牌を引くときの共通処理
+    }
+
+    //牌を引くときの共通処理
+    private void DrawCommon()
+    {
         ShowOrHideHand_Only(turnPlayer);        //手番プレイヤーの手牌を表示
+
+        if (Rules.CanClosedKan(hands[turnPlayer]))  //暗カン可能な場合
+        {
+            if (ai[turnPlayer].DecideClosedKan(hands[turnPlayer]))  //AIが暗カンを行うと判断した場合
+            {
+                nextMethod = ClosedKan;     //暗カン
+                timer = Times.Wait_ClosedKan();     //タイマーを設定
+
+                return;
+            }
+        }
 
         ai[turnPlayer].DecideDiscard(hands[turnPlayer]);    //AIに捨て牌を決定させる
 
@@ -342,10 +363,51 @@ public class GameManagerScript : MonoBehaviour {
         timer = Times.Wait_DrawToDiscard();     //タイマーを設定
     }
 
+    //暗カン
+    private void ClosedKan()
+    {
+        int kan_card = ai[turnPlayer].GetKanCardId();   //カンをする牌のid
+        int[] callCard = new int[4];   //カンに用いる牌の格納用配列
+        int count = 0;  //格納カウンタ
+
+        for (int i = hands[turnPlayer].Count - 1; 0 <= i; i--)
+        {
+            if (Rules.Same_BonusEquate(hands[turnPlayer][i],kan_card))
+            {
+                //指定の牌と同じの場合は手牌から格納用配列に移動
+                callCard[count] = hands[turnPlayer][i];
+                hands[turnPlayer].RemoveAt(i);
+                count++;
+                if (count >= 4)
+                {
+                    break;
+                }
+            }
+        }
+
+        callCards[turnPlayer].Add(new CallCardsSet());  //鳴き牌を追加
+                                                        //暗カンとして格納
+        callCards[turnPlayer][callCards[turnPlayer].Count - 1].ClosedKan(callCard, turnPlayer);
+
+        ShowOrHideHand_Only(turnPlayer);        //手牌を表示
+        ShowCallCard_Only(turnPlayer);          //鳴き牌を表示
+
+        nextMethod = DrawKanCard;       //嶺上牌を引く
+        timer = Times.Wait_DrawToDiscard();     //タイマーを設定
+    }
+
+    //嶺上牌を引く
+    private void DrawKanCard()
+    {
+        hands[turnPlayer].Add(deckManager.DrawCard());      //手番のプレイヤーの手牌に追加
+
+        DrawCommon();       //牌を引くときの共通処理
+    }
+
     //捨て牌
     private void Discard()
     {
-        int discardIndex = ai[turnPlayer].GetDiscard();     //捨て牌の手牌内での位置情報を取得
+        int discardIndex = ai[turnPlayer].GetDiscardIndex();     //捨て牌の手牌内での位置情報を取得
         tables[turnPlayer].Add(hands[turnPlayer][discardIndex]);    //捨て牌として追加
         hands[turnPlayer].RemoveAt(discardIndex);       //手牌から取り除く
 
@@ -397,11 +459,11 @@ public class GameManagerScript : MonoBehaviour {
         {
             if (p != turnPlayer)    //自分の捨て牌は除く
             {
-                bool[] pon_kan = Rules.CanPonOrKan(hands[p], discard);  //ポン、カンが可能かを取得
+                bool[] pon_kan = Rules.CanPonOrOpenKan(hands[p], discard);  //ポン、カンが可能かを取得
 
                 if (pon_kan[1])     //カン可能
                 {
-                    if (ai[p].DecideKan(hands[p]))      //AIがカンを行うと判断した場合
+                    if (ai[p].DecideOpenKan(hands[p]))      //AIがカンを行うと判断した場合
                     {
                         int[] cards = new int[4];       //鳴き牌格納用
                         int count = 0;      //鳴き牌探索カウンタ
@@ -419,7 +481,7 @@ public class GameManagerScript : MonoBehaviour {
                         cards[3] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
                         tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);          //捨て牌から取り除く
                         callCards[p].Add(new CallCardsSet());       //鳴き牌を追加
-                        callCards[p][callCards[p].Count - 1].Kan(cards, p, turnPlayer);     //カンとして格納
+                        callCards[p][callCards[p].Count - 1].OpenKan(cards, p, turnPlayer);     //カンとして格納
 
                         CallRob_End(p);     //鳴き終了処理
                         return;
@@ -545,8 +607,15 @@ public class GameManagerScript : MonoBehaviour {
             {
                 CallCard callCard = callCards[player][s].callCards[i];  //牌の情報を取得
                 GameObject card = new GameObject();
-                Sprite sprite = 
-                    cardImages[Rules.IdChangeSerialToCardImageId(callCard.card)];   //牌の画像を取得
+                Sprite sprite;
+                if (callCard.closedKan_hide)
+                {
+                    sprite = cardImages[cardImages.Length - 1];   //裏向き
+                }
+                else
+                {
+                    sprite =cardImages[Rules.IdChangeSerialToCardImageId(callCard.card)];   //表向き
+                }
                 card.AddComponent<SpriteRenderer>().sprite = sprite;        //画像を格納
                 card.transform.localScale = Layouts.callScales[player];     //大きさを決定
 
@@ -641,6 +710,22 @@ public class CallCard
     //鳴き牌の情報
     public int card;
     public int discardPlayer;
+    public bool closedKan_hide;
+    public bool addKan;
+
+    public CallCard()
+    {
+        closedKan_hide = false;
+        addKan = false;
+    }
+
+    public CallCard(int card,int discardPlayer, bool closedKan_hide,bool addKan)
+    {
+        this.card = card;
+        this.discardPlayer = discardPlayer;
+        this.closedKan_hide = closedKan_hide;
+        this.addKan = addKan;
+    }
 }
 
 public class CallCardsSet
@@ -673,8 +758,8 @@ public class CallCardsSet
         }
     }
 
-    //カン
-    public void Kan(int[] cardsId, int callPlayer, int discardPlayer)
+    //明カン
+    public void OpenKan(int[] cardsId, int callPlayer, int discardPlayer)
     {
         int count = 0;  //手牌からの牌のカウンタ
         for (int i = 0; i < 4; i++)
@@ -705,6 +790,18 @@ public class CallCardsSet
                 //牌情報を格納
                 callCards.Add(callCard);
             }
+        }
+    }
+
+    //暗カン
+    public void ClosedKan(int[] cards,int callPlayer)
+    {
+        bool[] hides = { true, false, false, true};
+
+        for(int i = 0; i < cards.Length; i++)
+        {
+            callCards.Add(new CallCard(cards[i],callPlayer,hides[i],false));
+
         }
     }
 
