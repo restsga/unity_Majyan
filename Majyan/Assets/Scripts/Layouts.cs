@@ -2,7 +2,7 @@
 
 public class Layouts
 {
-
+    // 局数表示用テキスト //
     readonly static public Vector2[] roundTextPositons =
         { new Vector2(-0.5f, 1f),new Vector2(0f,1f),new Vector2(0.5f,1f),
         new Vector2(-0.45f, 0.4f),new Vector2(0.1f,0.4f),new Vector2(0.5f,0.4f),
@@ -19,6 +19,7 @@ public class Layouts
         new Vector3(0f,0f,90f),new Vector3(0f,0f,0f),new Vector3(0f,0f,0f)};
 
 
+    // 得点表示用テキスト //
     readonly static public Vector2[] scoreTextOffsets =
         {new Vector2(-0.7f,-0.65f),new Vector2(1f,-0.2f),
        new Vector2(0.7f,1.5f),new Vector2(-1f,1.1f)};
@@ -40,6 +41,7 @@ public class Layouts
         new Vector2(-0.3f,0f),new Vector2(0f,-0.3f)};
 
 
+    // 手牌表示用テキスト //
     readonly static public Vector2[] handOffsets =
         { new Vector2(-7f, -4f) ,new Vector2(7f,-2f),
         new Vector2(3.5f,4.5f),new Vector2(-7f,4.5f)};
@@ -57,6 +59,7 @@ public class Layouts
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
 
+    // 捨て牌表示用テキスト //
     readonly static public Vector2[] tableOffsets =
         { new Vector2(-1f, -1.2f) ,new Vector2(1.55f,-0.55f),
         new Vector2(1f,2.05f),new Vector2(-1.55f,1.45f)};
@@ -78,6 +81,7 @@ public class Layouts
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
 
+    // 鳴き牌表示用テキスト //
     readonly static public Vector2[] callOffsets =
     { new Vector2(7.5f, -4.5f) ,new Vector2(7.5f,4.5f),
         new Vector2(-6.2f,4.5f),new Vector2(-7.5f,-2.75f)};

@@ -11,7 +11,7 @@ abstract public class AI {
     public abstract bool DecideTi(List<int> hand, ref int[] indexes,int discard_other);
     public abstract bool DecideKan(List<int> hand);
 
-    public int GetDiscord()
+    public int GetDiscard()
     {
         return discard;
     }

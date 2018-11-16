@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Times{
 
-    public static float speed = 2.0f;
+    public static float speed = 1.0f;
 
     public static float Wait_Deal()
     {
@@ -20,15 +20,15 @@ public class Times{
     }
     public static float Wait_CallToDiscard()
     {
-        return 0.2f / speed;
+        return 0.5f / speed;
     }
     public static float Wait_Call()
     {
-        return 0.8f/speed;
+        return 0.9f/speed;
     }
     public static float Wait_NextTurn()
     {
-        return 0.2f/speed;
+        return 0.1f/speed;
     }
 	
 }
