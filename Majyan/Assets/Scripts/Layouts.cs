@@ -41,6 +41,12 @@ public class Layouts
         new Vector2(-0.3f,0f),new Vector2(0f,-0.3f)};
 
 
+    // ドラ表示牌 //
+    readonly static public Vector2 bonusOffset = new Vector2(-5f, 3f);
+    readonly static public Vector2 bonusScale = new Vector2(0.75f, 0.75f);
+    readonly static public Vector2 bonusLineupDirection = new Vector2(0.5f, 0f);
+    readonly static public Vector3 bonusRotation = new Vector3(0f, 0f, 0f);
+
     // 手牌表示用テキスト //
     readonly static public Vector2[] handOffsets =
         { new Vector2(-7f, -4f) ,new Vector2(7f,-2f),
@@ -101,5 +107,9 @@ public class Layouts
     readonly static public Vector3[] callRotations =
         { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,90f),
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
+
+    readonly static public Vector2[] callLineupAddYPositions =
+        {new Vector2(0f,0.6f),new Vector2(-0.405f,0f),
+        new Vector2(0f,-0.405f),new Vector2(0.405f,0f)};
 
 }

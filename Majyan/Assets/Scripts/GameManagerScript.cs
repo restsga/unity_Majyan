@@ -28,6 +28,7 @@ public class GameManagerScript : MonoBehaviour {
     private List<GameObject>[] callObjects = new List<GameObject>[4];       //鳴き牌
     private List<GameObject> roundTextObjects = new List<GameObject>();     //局数表示用テキスト
     private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];  //得点表示用テキスト
+    private List<GameObject> bonusObjects = new List<GameObject>();
     //AI
     private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };     
 
@@ -60,12 +61,9 @@ public class GameManagerScript : MonoBehaviour {
 	void Start () {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        seed = 802;
+        seed = 277;
         //seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000+seed);         //seed値を入力
-                                            //明槓:10006,10008,10012,10025
-                                            //暗槓:10029,10033
-                                            //加槓:10048
 
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
 
@@ -152,6 +150,7 @@ public class GameManagerScript : MonoBehaviour {
         }
 
         ShowRound();        //局数表示
+        ShowBonusCards();   //ドラ表示
 
         turnPlayer = Rules.HouseIdToPlayerId(startPlayer, round, 0);    //東家のプレイヤーの手番で開始
 
@@ -333,6 +332,37 @@ public class GameManagerScript : MonoBehaviour {
         cardObjects.Clear();    //ゲームオブジェクトの格納変数を初期化
     }
 
+    //ドラ表示牌を表示
+    private void ShowBonusCards()
+    {
+        DestroyCardObjects(ref bonusObjects);    //表示しているドラ表示牌のゲームオブジェクトを削除
+
+        int[] cards = deckManager.GetBonusCards();      //ドラ表示牌を取得
+        int index = deckManager.GetShowBonusIndex();    //表示範囲を取得
+
+        for (int i = 0; i < cards.Length/2; i++)
+        {
+            GameObject card = new GameObject();
+            Sprite sprite;
+            if (i<=index)
+            {
+                sprite =
+                    cardImages[Rules.IdChangeSerialToCardImageId(cards[i])];    //表向きの牌画像
+            }
+            else
+            {
+                sprite = cardImages[cardImages.Length - 1];    //裏向きの牌画像
+            }
+            card.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
+            card.transform.localScale = Layouts.bonusScale;     //大きさを決定
+            card.transform.position = Layouts.bonusOffset+ Layouts.bonusLineupDirection* i;
+            card.transform.rotation =
+                Quaternion.Euler(Layouts.bonusRotation);    //角度を決定
+
+            bonusObjects.Add(card);      //メモリ解放用のリストに格納
+        }
+    }
+
     //牌を引く
     private void DrawCard()
     {
@@ -351,7 +381,18 @@ public class GameManagerScript : MonoBehaviour {
             if (ai[turnPlayer].DecideClosedKan(hands[turnPlayer]))  //AIが暗カンを行うと判断した場合
             {
                 nextMethod = ClosedKan;     //暗カン
-                timer = Times.Wait_ClosedKan();     //タイマーを設定
+                timer = Times.Wait_HandKan();     //タイマーを設定
+
+                return;
+            }
+        }
+
+        if (Rules.CanAddKan(hands[turnPlayer], callCards[turnPlayer]))  //加カン可能な場合
+        {
+            if (ai[turnPlayer].DecideAddKan(hands[turnPlayer], callCards[turnPlayer]))  //AIが加カンを行うと判断した場合
+            {
+                nextMethod = AddKan;     //加カン
+                timer = Times.Wait_HandKan();     //タイマーを設定
 
                 return;
             }
@@ -386,22 +427,82 @@ public class GameManagerScript : MonoBehaviour {
         }
 
         callCards[turnPlayer].Add(new CallCardsSet());  //鳴き牌を追加
-                                                        //暗カンとして格納
-        callCards[turnPlayer][callCards[turnPlayer].Count - 1].ClosedKan(callCard, turnPlayer);
+        callCards[turnPlayer][callCards[turnPlayer].Count - 1].ClosedKan(callCard, turnPlayer); //暗カンとして格納
 
         ShowOrHideHand_Only(turnPlayer);        //手牌を表示
         ShowCallCard_Only(turnPlayer);          //鳴き牌を表示
 
-        nextMethod = DrawKanCard;       //嶺上牌を引く
+        nextMethod = OpenAddBonus_Closed;  //ドラ表示牌をめくる
+        timer = Times.Wait_OpenAddBonus();      //タイマーを設定
+    }
+
+    //加カン
+    private void AddKan()
+    {
+        int kan_index = ai[turnPlayer].GetKanCardId();   //カンをする牌の鳴き牌内での位置情報
+        int callCard = NULL_ID;
+
+        for (int i = hands[turnPlayer].Count - 1; 0 <= i; i--)
+        {
+            if (Rules.Same_BonusEquate(hands[turnPlayer][i], callCards[turnPlayer][kan_index].callCards[0].card))
+            {
+                //指定の牌と同じの場合は手牌から鳴き牌に移動
+                callCard = hands[turnPlayer][i];
+                hands[turnPlayer].RemoveAt(i);
+                    break;
+            }
+        }
+
+        callCards[turnPlayer][kan_index].AddKan(callCard, turnPlayer); //加カンとして格納
+
+        ShowOrHideHand_Only(turnPlayer);        //手牌を表示
+        ShowCallCard_Only(turnPlayer);          //鳴き牌を表示
+
+        nextMethod = DrawKanCard_Open;       //嶺上牌を引く
+        timer = Times.Wait_DrawKanCard();     //タイマーを設定
+    }
+
+    //ドラ表示牌をめくる(暗カン)
+    private void OpenAddBonus_Closed()
+    {
+        deckManager.AddBonusCard();     //ドラ表示牌を追加
+        ShowBonusCards();   //ドラ表示
+
+        nextMethod = DrawKanCard_Closed;       //嶺上牌を引く
+        timer = Times.Wait_DrawKanCard();     //タイマーを設定
+
+    }
+
+    //ドラ表示牌をめくる(明カン、加カン)
+    private void OpenAddBonus_Open()
+    {
+        deckManager.AddBonusCard();     //ドラ表示牌を追加
+        ShowBonusCards();   //ドラ表示
+
+        nextMethod = CallRob;      //鳴き
+        timer = Times.Wait_Call();  //タイマーを設定
+    }
+
+    //嶺上牌を引く(暗カン)
+    private void DrawKanCard_Closed()
+    {
+        hands[turnPlayer].Add(deckManager.DrawKanCard());      //手番のプレイヤーの手牌に追加
+
+        DrawCommon();       //牌を引くときの共通処理
+
+        nextMethod = Discard;       //捨て牌をする
         timer = Times.Wait_DrawToDiscard();     //タイマーを設定
     }
 
-    //嶺上牌を引く
-    private void DrawKanCard()
+    //嶺上牌を引く(明カン、加カン)
+    private void DrawKanCard_Open()
     {
-        hands[turnPlayer].Add(deckManager.DrawCard());      //手番のプレイヤーの手牌に追加
+        hands[turnPlayer].Add(deckManager.DrawKanCard());      //手番のプレイヤーの手牌に追加
 
         DrawCommon();       //牌を引くときの共通処理
+
+        nextMethod = Discard_OpenKan;       //捨て牌をする
+        timer = Times.Wait_DrawToDiscard();     //タイマーを設定
     }
 
     //捨て牌
@@ -416,6 +517,15 @@ public class GameManagerScript : MonoBehaviour {
 
         nextMethod = CallRob;      //鳴き
         timer = Times.Wait_Call();  //タイマーを設定
+    }
+
+    //ドラ表示牌をめくる直前の捨て牌
+    private void Discard_OpenKan()
+    {
+        Discard();      //捨て牌をする
+
+        nextMethod = OpenAddBonus_Open;     //ドラ表示牌をめくる
+        timer = Times.Wait_OpenAddBonus();     //タイマーを設定
     }
 
     //プレイヤー1名分の捨て牌を表示(基底関数)
@@ -621,6 +731,7 @@ public class GameManagerScript : MonoBehaviour {
 
                 float addDirection;     //回転した牌のための余白を用意するかどうかのフラグ
                 Vector3 addRotation ;   //回転した牌の場合に追加する回転量
+                Vector2 addY=new Vector2( 0f,0f);          //加カン牌用のずらしフラグ
                 if (callCard.discardPlayer == player)   
                 {
                     //自分の鳴き牌の場合は回転はなし
@@ -634,7 +745,18 @@ public class GameManagerScript : MonoBehaviour {
                     addDirection = 1.0f;    //余白用意フラグを立てる
                     addRotation = new Vector3(0f, 0f, 90f);     //回転させる
                 }
-                card.transform.position = position; //牌の表示位置を決定
+                if (callCard.addKan)
+                {
+                    //加カン牌の場合は基本位置xを戻す。yはずらすフラグを立てる
+                    position -=
+                    Layouts.callLineupDirections[player] +
+                    Layouts.callLineupRotatedAddDirections[player];
+                    addY = Layouts.callLineupAddYPositions[player];
+
+                    addDirection = 1.0f;    //余白用意フラグを立てる
+                    addRotation = new Vector3(0f, 0f, 90f);     //回転させる
+                }
+                card.transform.position = position+addY; //牌の表示位置を決定
                 //回転の有無を考慮して次の牌の基本位置を決定
                 position += 
                     Layouts.callLineupDirections[player]+ 
@@ -659,6 +781,8 @@ public class DeckManager
 {
     // 変数 //
     private int deckUsedIndex;  //使用済みの牌の位置
+    private int replacementUsedIndex;   //使用済みの嶺上牌の位置
+    private int showBonusIndex;     //ドラ表示牌の範囲
 
     // Cards //
     private int[] deck = new int[136];  //牌山
@@ -667,6 +791,8 @@ public class DeckManager
     40,41,42,44,45,46,48,49,50,52,53,54,56,
     60,61,62,64,65,66,68,69,70,72,73,74,76,
     3,7,11,15,17,18,19,23,27,31,35,37,38,39,43,47,51,55,57,58,59,63,67,71,75,77,78,79,80};*/
+    private int[] replacements = new int[4];    //嶺上牌
+    private int[] bonusCards = new int[10];     //ドラ表示牌
 
         //ゲーム開始時の初期化
     public void Initialize_NewGame()
@@ -681,8 +807,20 @@ public class DeckManager
     public void Initialize_NextRound()
     {
         deckUsedIndex = -1;     //使用済みの牌は存在しないので-1
+        replacementUsedIndex = -1;       //カンの回数
+        showBonusIndex = 0;     //ドラ表示牌の範囲
 
         Shuffle();  //シャッフル
+
+        for(int i = 0; i < replacements.Length; i++)
+        {
+            replacements[i] = DrawCard();
+        }
+
+        for(int i = 0; i < bonusCards.Length; i++)
+        {
+            bonusCards[i] = DrawCard();
+        }
     }
 
     //シャッフル
@@ -700,8 +838,37 @@ public class DeckManager
     //牌を引く
     public int DrawCard()
     {
-        deckUsedIndex++;    //未使用の牌の最後のものを使用済みの牌とする
+        deckUsedIndex++;    //未使用の牌の先頭のものを使用済みの牌とする
         return deck[deckUsedIndex];
+    }
+
+    //嶺上牌を引く
+    public int DrawKanCard()
+    {
+        replacementUsedIndex++;
+        return replacements[replacementUsedIndex];
+    }
+
+    //ドラ表示牌を追加
+    public void AddBonusCard()
+    {
+        showBonusIndex++;
+    }
+
+    public int[] GetBonusCards()
+    {
+        int[] array = new int[bonusCards.Length];
+        for(int i = 0; i < bonusCards.Length; i++)
+        {
+            array[i] = bonusCards[i];
+        }
+
+        return array;
+    }
+
+    public int GetShowBonusIndex()
+    {
+        return showBonusIndex;
     }
 }
 
@@ -801,7 +968,18 @@ public class CallCardsSet
         for(int i = 0; i < cards.Length; i++)
         {
             callCards.Add(new CallCard(cards[i],callPlayer,hides[i],false));
+        }
+    }
 
+    //加カン
+    public void AddKan(int card,int callPlayer)
+    {
+        for(int i = 0; i < callCards.Count; i++)
+        {
+            if (callCards[i].discardPlayer != callPlayer)
+            {
+                callCards.Insert(i + 1, new CallCard(card, callPlayer, false, true));
+            }
         }
     }
 
