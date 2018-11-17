@@ -87,13 +87,36 @@ public class Draw_Discard:AI {
 
                 if (chain >= 4)
                 {
-                    kan_cardId = sortedHand[i];
+                    kan_cardIdOrCallIndex = sortedHand[i];
                     break;
                 }
             }
             else
             {
                 chain = 1;
+            }
+        }
+
+        return true;
+    }
+
+    public override bool DecideAddKan(List<int> hand, List<CallCardsSet> call)
+    {
+        List<int> ponCards = new List<int>();
+
+        for (int s = 0; s < call.Count; s++)
+        {
+            if (Rules.CallCardKinds(call[s]) == Rules.PON)
+            {
+                for (int i = 0; i < hand.Count; i++)
+                {
+                    if (Rules.Same_BonusEquate(hand[i], call[s].callCards[0].card))
+                    {
+                        kan_cardIdOrCallIndex = s;
+
+                        return true;
+                    }
+                }
             }
         }
 
