@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class GameManagerScript : MonoBehaviour {
 
@@ -29,8 +30,12 @@ public class GameManagerScript : MonoBehaviour {
     private List<GameObject> roundTextObjects = new List<GameObject>();     //局数表示用テキスト
     private List<GameObject>[] scoreTextObjects = new List<GameObject>[4];  //得点表示用テキスト
     private List<GameObject> bonusObjects = new List<GameObject>();
+    
     //AI
-    private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };     
+    private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };
+
+    //UI
+    private int movingCard=NULL_ID;
 
     // 定数 //
     private const int NULL_ID = -1000;  //nullとして扱う数値
@@ -45,6 +50,8 @@ public class GameManagerScript : MonoBehaviour {
     private bool increaseParentCount;   //n本場増加フラグ
 
     private int turnPlayer;     //手番プレイヤー
+
+    private bool playing = true;
 
     private delegate void NextMethod();     
     private NextMethod nextMethod;          //一定時間経過後に実行する関数
@@ -61,8 +68,9 @@ public class GameManagerScript : MonoBehaviour {
 	void Start () {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        seed = 277;
-        //seed = DateTime.Now.Millisecond;    //seed値決定
+        //235:暗カン,277:加カン、明カン,908:明カン
+        seed = 235;
+        seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000+seed);         //seed値を入力
 
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
@@ -82,9 +90,10 @@ public class GameManagerScript : MonoBehaviour {
 
         Initialize_NewGame();       //ゲーム開始時用の初期化処理
 	}
-	
-	// Update is called once per frame
-	void Update () {
+
+    // Update is called once per frame
+    void Update()
+    {
 
         if (nextMethod != null)         //一定時間経過後に実行する関数が存在する場合
         {
@@ -95,7 +104,22 @@ public class GameManagerScript : MonoBehaviour {
                 nextMethod();           //格納されていた関数を実行
             }
         }
-	}
+
+        if (Input.touchSupported)
+        {
+            if (Input.touchCount <= 0)
+            {
+                MouseUp();
+            }
+        }
+        else
+        {
+            if (Input.GetMouseButtonUp(0))
+            {
+                MouseUp();
+            }
+        }
+    }
 
     //ゲーム開始時の初期化
     private void Initialize_NewGame()
@@ -268,24 +292,76 @@ public class GameManagerScript : MonoBehaviour {
         for (int i = 0; i < hands[player].Count; i++)   
         {
             GameObject card = new GameObject();
-            Sprite sprite;  
+            Sprite sprite;
+            int handCard = hands[player][i];
             if (show)   
             {
                 sprite = 
-                    cardImages[Rules.IdChangeSerialToCardImageId(hands[player][i])];    //表向きの牌画像
+                    cardImages[Rules.IdChangeSerialToCardImageId(handCard)];    //表向きの牌画像
             }
             else
             {
                 sprite = cardImages[cardImages.Length-1];    //裏向きの牌画像
             }
+            
             card.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
             card.transform.localScale = Layouts.handScales[player];     //大きさを決定
             card.transform.position = Layouts.handOffsets[player]+Layouts.handLineupDirections[player]*i;
             card.transform.rotation = 
                 Quaternion.Euler(Layouts.handRotations[player]);    //角度を決定
 
+            if (player == 0&&playing)
+            {
+                card.AddComponent<BoxCollider2D>();
+
+                EventTrigger.Entry down = new EventTrigger.Entry();
+                down.eventID = EventTriggerType.PointerDown;
+                down.callback.AddListener((f) => MouseDown(handCard));
+                card.AddComponent<EventTrigger>().triggers.Add(down);
+
+                EventTrigger.Entry drag = new EventTrigger.Entry();
+                drag.eventID = EventTriggerType.PointerEnter;
+                int index = i;
+                drag.callback.AddListener((f) => MouseMove(index));
+                card.GetComponent<EventTrigger>().triggers.Add(drag);
+            }
+
             handObjects[player].Add(card);      //メモリ解放用のリストに格納
         }
+    }
+
+    //
+    public void MouseDown(int card)
+    {
+        movingCard = card;
+        ShowOrHideHand_Only(0);
+    }
+
+    //
+    public void MouseMove(int index)
+    {
+        if (movingCard >= 0)
+        {
+            for (int i = 0; i < hands[0].Count; i++)
+            {
+                if (hands[0][i] == movingCard)
+                {
+                    hands[0].RemoveAt(i);
+                    break;
+                }
+            }
+
+            hands[0].Insert(index, movingCard);
+
+            ShowOrHideHand_Only(0);
+        }
+    }
+
+    //
+    public void MouseUp()
+    {
+        movingCard = NULL_ID;
+        ShowOrHideHand_Only(0);
     }
 
     //プレイヤー情報(1名分)に合わせて牌の表裏を考慮して手牌を表示(派生関数)
@@ -575,25 +651,8 @@ public class GameManagerScript : MonoBehaviour {
                 {
                     if (ai[p].DecideOpenKan(hands[p]))      //AIがカンを行うと判断した場合
                     {
-                        int[] cards = new int[4];       //鳴き牌格納用
-                        int count = 0;      //鳴き牌探索カウンタ
+                        OpenKan(p,discard);     //明カン
 
-                        for (int i = hands[p].Count - 1; 0 <= i; i--)
-                        {
-                            if (Rules.Same_BonusEquate(hands[p][i], discard))   //捨て牌と同じ牌の場合
-                            {
-                                cards[count] = hands[p][i];     //鳴き牌として格納
-                                hands[p].RemoveAt(i);           //手牌から取り除く
-                                count++;                        //探索カウンタを増加
-                            }
-                        }
-
-                        cards[3] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
-                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);          //捨て牌から取り除く
-                        callCards[p].Add(new CallCardsSet());       //鳴き牌を追加
-                        callCards[p][callCards[p].Count - 1].OpenKan(cards, p, turnPlayer);     //カンとして格納
-
-                        CallRob_End(p);     //鳴き終了処理
                         return;
                     }
                 }
@@ -603,51 +662,7 @@ public class GameManagerScript : MonoBehaviour {
 
                     if (ai[p].DecidePon(hands[p], ref bonus))    //AIがポンを行うと判断した場合
                     {
-                        int[] cards = new int[3];   //鳴き牌格納用
-                        int count = 0;      //鳴き牌探索カウンタ
-
-                        for (int i = hands[p].Count - 1; 0 <= i; i--)
-                        {
-                            if (Rules.Same_BonusEquate(hands[p][i], discard))   //捨て牌と同じ牌の場合
-                            {
-                                cards[count] = hands[p][i];     //鳴き牌として格納
-                                hands[p].RemoveAt(i);           //手牌から取り除く
-                                count++;                        //探索カウンタを増加
-                            }
-                        }
-
-                        if (count >= 3)     //鳴き牌の選択肢が複数の場合
-                        {
-                            int bonusIndex;     //赤ドラの扱い
-
-                            if (bonus == false) //赤ドラを鳴き牌に含めない場合
-                            {
-                                bonusIndex = 2; //鳴き牌格納用配列の末尾へ格納
-                            }
-                            else
-                            {
-                                bonusIndex = 0; //鳴き牌格納用配列の先頭へ格納
-                            }
-
-                            for (int i = 0; i < cards.Length; i++)
-                            {
-                                if (Rules.Bonus5(cards[i]))     //赤ドラの場合
-                                {
-                                    //赤ドラとその他の牌を入れ替える
-                                    int keep = cards[bonusIndex];
-                                    cards[bonusIndex] = cards[i];
-                                    cards[i] = keep;
-                                    break;
-                                }
-                            }
-                        }
-
-                        cards[2] = discard;     //鳴き牌格納用配列の末尾を捨て牌で上書き
-                        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌を取り除く
-                        callCards[p].Add(new CallCardsSet());   //鳴き牌を追加
-                        callCards[p][callCards[p].Count - 1].Pon(cards, p, turnPlayer);     //ポンとして格納
-
-                        CallRob_End(p);     //鳴き終了処理
+                        Pon(p, discard, bonus);     //ポン
 
                         return;
                     }
@@ -661,24 +676,7 @@ public class GameManagerScript : MonoBehaviour {
             int[] indexes = new int[2];     //鳴き牌とする牌の手牌内での位置情報の格納用
             if (ai[tiPlayer].DecideTi(hands[tiPlayer], ref indexes, discard))    //AIがチーをすると判断した場合
             {
-                //牌の並び順を降順にする
-                Array.Sort(indexes);
-                Array.Reverse(indexes);
-
-                int[] cards = new int[3];   //鳴き牌格納用
-
-                for (int i = 0; i < indexes.Length; i++)
-                {
-                    cards[i] = hands[tiPlayer][indexes[i]];     //鳴き牌として格納
-                    hands[tiPlayer].RemoveAt(indexes[i]);       //手牌から取り除く
-                }
-
-                cards[2] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
-                tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌から取り除く
-                callCards[tiPlayer].Add(new CallCardsSet());    //鳴き牌を追加
-                callCards[tiPlayer][callCards[tiPlayer].Count - 1].Ti(cards, tiPlayer, turnPlayer); //チーとして格納
-
-                CallRob_End(tiPlayer);      //鳴き終了処理
+                Ti(tiPlayer, indexes, discard);     //チー
 
                 return;
             }
@@ -687,6 +685,106 @@ public class GameManagerScript : MonoBehaviour {
         //鳴きが無ければ実行される
         nextMethod = NextTurn;          //手番移動処理
         timer = Times.Wait_NextTurn();  //タイマーを設定
+    }
+
+    //明カン
+    private void OpenKan(int callPlayer,int discard)
+    {
+        int[] cards = new int[4];       //鳴き牌格納用
+        int count = 0;      //鳴き牌探索カウンタ
+
+        for (int i = hands[callPlayer].Count - 1; 0 <= i; i--)
+        {
+            if (Rules.Same_BonusEquate(hands[callPlayer][i], discard))   //捨て牌と同じ牌の場合
+            {
+                cards[count] = hands[callPlayer][i];     //鳴き牌として格納
+                hands[callPlayer].RemoveAt(i);           //手牌から取り除く
+                count++;                        //探索カウンタを増加
+            }
+        }
+
+        cards[3] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
+        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);          //捨て牌から取り除く
+        callCards[callPlayer].Add(new CallCardsSet());       //鳴き牌を追加
+        callCards[callPlayer][callCards[callPlayer].Count - 1].OpenKan(cards, callPlayer, turnPlayer);     //カンとして格納
+
+        CallRob_End(callPlayer);     //鳴き終了処理
+
+        nextMethod = DrawKanCard_Open;       //嶺上牌を引く
+        timer = Times.Wait_DrawKanCard();     //タイマーを設定
+    }
+
+    //ポン
+    private void Pon(int callPlayer,int discard,bool bonus)
+    {
+        int[] cards = new int[3];   //鳴き牌格納用
+        int count = 0;      //鳴き牌探索カウンタ
+
+        for (int i = hands[callPlayer].Count - 1; 0 <= i; i--)
+        {
+            if (Rules.Same_BonusEquate(hands[callPlayer][i], discard))   //捨て牌と同じ牌の場合
+            {
+                cards[count] = hands[callPlayer][i];     //鳴き牌として格納
+                hands[callPlayer].RemoveAt(i);           //手牌から取り除く
+                count++;                        //探索カウンタを増加
+            }
+        }
+
+        if (count >= 3&&Rules.Bonus5(discard))     //鳴き牌の選択肢が複数の場合
+        {
+            int bonusIndex;     //赤ドラの扱い
+
+            if (bonus == false) //赤ドラを鳴き牌に含めない場合
+            {
+                bonusIndex = 2; //鳴き牌格納用配列の末尾へ格納
+            }
+            else
+            {
+                bonusIndex = 0; //鳴き牌格納用配列の先頭へ格納
+            }
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                if (Rules.Bonus5(cards[i]))     //赤ドラの場合
+                {
+                    //赤ドラとその他の牌を入れ替える
+                    int keep = cards[bonusIndex];
+                    cards[bonusIndex] = cards[i];
+                    cards[i] = keep;
+                    break;
+                }
+            }
+        }
+
+        cards[2] = discard;     //鳴き牌格納用配列の末尾を捨て牌で上書き
+        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌を取り除く
+        callCards[callPlayer].Add(new CallCardsSet());   //鳴き牌を追加
+        callCards[callPlayer][callCards[callPlayer].Count - 1].Pon(cards, callPlayer, turnPlayer);     //ポンとして格納
+
+        CallRob_End(callPlayer);     //鳴き終了処理
+    }
+
+    //チー
+    private void Ti(int tiPlayer,int[] indexes,int discard)
+    {
+        //牌の並び順を降順にする
+        Array.Sort(indexes);
+        Array.Reverse(indexes);
+
+        int[] cards = new int[3];   //鳴き牌格納用
+
+        for (int i = 0; i < indexes.Length; i++)
+        {
+            cards[i] = hands[tiPlayer][indexes[i]];     //鳴き牌として格納
+            hands[tiPlayer].RemoveAt(indexes[i]);       //手牌から取り除く
+        }
+
+        cards[2] = discard;     //鳴き牌格納用の配列の最後(=未定義の部分)に捨て牌を格納
+        tables[turnPlayer].RemoveAt(tables[turnPlayer].Count - 1);  //捨て牌から取り除く
+        callCards[tiPlayer].Add(new CallCardsSet());    //鳴き牌を追加
+        callCards[tiPlayer][callCards[tiPlayer].Count - 1].Ti(cards, tiPlayer, turnPlayer); //チーとして格納
+
+        CallRob_End(tiPlayer);      //鳴き終了処理
     }
 
     //鳴き終了処理
@@ -744,6 +842,7 @@ public class GameManagerScript : MonoBehaviour {
                     position += Layouts.callLineupRotatedAddDirections[player]; //回転分の座標補正
                     addDirection = 1.0f;    //余白用意フラグを立てる
                     addRotation = new Vector3(0f, 0f, 90f);     //回転させる
+                    addY = Layouts.callLineupRotatedAddYPositions[player];      //高さ補正
                 }
                 if (callCard.addKan)
                 {
@@ -751,7 +850,9 @@ public class GameManagerScript : MonoBehaviour {
                     position -=
                     Layouts.callLineupDirections[player] +
                     Layouts.callLineupRotatedAddDirections[player];
-                    addY = Layouts.callLineupAddYPositions[player];
+                    addY =
+                        Layouts.callLineupRotatedAddYPositions[player]+
+                        Layouts.callLineupAddDoubleYPositions[player];
 
                     addDirection = 1.0f;    //余白用意フラグを立てる
                     addRotation = new Vector3(0f, 0f, 90f);     //回転させる

@@ -7,6 +7,8 @@ abstract public class AI {
     protected int discard_index;
     protected int kan_cardIdOrCallIndex;
 
+
+
     public abstract void DecideDiscard(List<int> hand);
     public abstract bool DecidePon(List<int> hand,ref bool bonus);
     public abstract bool DecideTi(List<int> hand, ref int[] indexes,int discard_other);

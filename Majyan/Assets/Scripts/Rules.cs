@@ -159,15 +159,13 @@ public class Rules
                 chain = 1;
             }
         }
-
+         
         return false;
     }
 
     //加カンが出来るか判定
     static public bool CanAddKan(List<int> hand, List<CallCardsSet> call)
     {
-        List<int> ponCards = new List<int>();
-
         for (int s = 0; s < call.Count; s++)
         {
             if (CallCardKinds(call[s]) == PON)

@@ -102,8 +102,6 @@ public class Draw_Discard:AI {
 
     public override bool DecideAddKan(List<int> hand, List<CallCardsSet> call)
     {
-        List<int> ponCards = new List<int>();
-
         for (int s = 0; s < call.Count; s++)
         {
             if (Rules.CallCardKinds(call[s]) == Rules.PON)
