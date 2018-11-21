@@ -47,7 +47,7 @@ public class Layouts
     readonly static public Vector2 bonusLineupDirection = new Vector2(0.5f, 0f);
     readonly static public Vector3 bonusRotation = new Vector3(0f, 0f, 0f);
 
-    // 手牌表示用テキスト //
+    // 手牌 //
     readonly static public Vector2[] handOffsets =
         { new Vector2(-7f, -4f) ,new Vector2(7f,-2f),
         new Vector2(3.5f,4.5f),new Vector2(-7f,4.5f)};
@@ -65,7 +65,7 @@ public class Layouts
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
 
-    // 捨て牌表示用テキスト //
+    // 捨て牌 //
     readonly static public Vector2[] tableOffsets =
         { new Vector2(-1f, -1.2f) ,new Vector2(1.55f,-0.55f),
         new Vector2(1f,2.05f),new Vector2(-1.55f,1.45f)};
@@ -87,7 +87,7 @@ public class Layouts
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
 
-    // 鳴き牌表示用テキスト //
+    // 鳴き牌 //
     readonly static public Vector2[] callOffsets =
     { new Vector2(7.5f, -4.5f) ,new Vector2(7.5f,4.5f),
         new Vector2(-6.2f,4.5f),new Vector2(-7.5f,-2.75f)};
@@ -108,8 +108,16 @@ public class Layouts
         { new Vector3(0f, 0f, 0f),new Vector3(0f,0f,90f),
         new Vector3(0f,0f,180f),new Vector3(0f,0f,-90f)};
 
-    readonly static public Vector2[] callLineupAddYPositions =
+    readonly static public Vector2[] callLineupRotatedAddYPositions =
+        {new Vector2(0f,-0.11f),new Vector2(0.065f,0f),
+        new Vector2(0f,0.065f),new Vector2(-0.065f,0f)};
+
+    readonly static public Vector2[] callLineupAddDoubleYPositions =
         {new Vector2(0f,0.6f),new Vector2(-0.405f,0f),
         new Vector2(0f,-0.405f),new Vector2(0.405f,0f)};
+
+
+    //タッチ対応
+    readonly static public Vector2 touchCardSize = new Vector2(1f, 1.5f);
 
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Times{
 
-    private static float speed = 5.0f;
+    private static float speed = 1.0f;
 
     public static float Wait_Deal()
     {
@@ -28,7 +28,7 @@ public class Times{
     }
     public static float Wait_NextTurn()
     {
-        return 0.1f/speed;
+        return 1.0f/speed;
     }
     public static float Wait_HandKan()
     {
@@ -40,6 +40,6 @@ public class Times{
     }
     public static float Wait_DrawKanCard()
     {
-        return 0.8f / speed;
+        return 1.0f / speed;
     }
 }
