@@ -9,115 +9,63 @@ public class Draw_Discard:AI {
     {
 
     }
-
-    public override void DecideDiscard(List<int> hand)
+    
+    public override int DecideDiscardOrKan(List<int> hand,List<CallCardsSet> call)
     {
-        discard_index= hand.Count - 1;
-    }
-
-    public override bool DecidePon(List<int> hand, ref bool bonus)
-    {
-        bonus = true;
-        return true;
-    }
-
-    public override bool DecideTi(List<int> hand, ref int[] indexes,int discard_other)
-    {
-        List<int> sameGroupCards = new List<int>();
-        List<int> indexesOfHand = new List<int>();
-        int[,] numbers = { { -2, -1 }, { -1, 1 }, { 1, 2 } };
-
-        if (Rules.IdChangeSerialToCardImageId(discard_other) <= 29)
+        List<int> closedKanIndexes = CanClosedKan(hand);
+        if (closedKanIndexes.Count>=1)
         {
-            for (int i = 0; i < hand.Count; i++)
-            {
-                if (Rules.SameGroup(hand[i], discard_other))
-                {
-                    sameGroupCards.Add(hand[i]);
-                    indexesOfHand.Add(i);
-                }
-            }
-            sameGroupCards.Sort();
-            for (int c = 0; c < 3; c++)
-            {
-                int check = 0;
-                for (int i = 0; i < sameGroupCards.Count; i++)
-                {
-                    if (Rules.Same_BonusEquate(sameGroupCards[i], discard_other + numbers[c, check] * 4))
-                    {
-                        indexes[check] = indexesOfHand[i];
-
-                        check++;
-                        if (check >= 2)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    public override bool DecideOpenKan(List<int> hand)
-    {
-        return true;
-    }
-
-    public override bool DecideClosedKan(List<int> hand)
-    {
-        int[] sortedHand = new int[hand.Count];     //元のリストを変更しないためのコピー
-
-        //リストから編集用の配列に情報を複製
-        for (int i = 0; i < hand.Count; i++)
-        {
-            sortedHand[i] = hand[i];
+            call_index = closedKanIndexes[0];
+            return CLOSED_KAN;
         }
 
-        Array.Sort(sortedHand);     //並べ替え
-
-        int chain = 1;
-
-        //4枚以上同じ牌が連続するか判定
-        for (int i = 1; i < sortedHand.Length; i++)
+        List<int> addKanIndexes = CanAddKan(hand, call);
+        if (addKanIndexes.Count >= 1)
         {
-            if (Rules.Same_BonusEquate(sortedHand[i - 1], sortedHand[i]))
-            {
-                chain++;
+            call_index = addKanIndexes[0];
+            return ADD_KAN;
+        }
 
-                if (chain >= 4)
-                {
-                    kan_cardIdOrCallIndex = sortedHand[i];
-                    break;
-                }
+        discard_index = hand.Count - 1;
+        return DISCARD;
+    }
+
+    public override int DecideCallKanOrPon(List<int> hand,int discard)
+    {
+        List<int> ponOrKanIndexes = CanCallKanOrPon(hand, discard);
+
+        if (ponOrKanIndexes.Count >= 3 - 1)
+        {
+            call_index = ponOrKanIndexes[0];
+
+            if (ponOrKanIndexes.Count >= 4-1)
+            {
+                return OPEN_KAN;
             }
             else
             {
-                chain = 1;
+                discard_index = hand.Count - 1-2;
+                useBonusCard_forPon = true;
+                return PON;
             }
         }
 
-        return true;
+        return NOT_CALL;
     }
 
-    public override bool DecideAddKan(List<int> hand, List<CallCardsSet> call)
+    public override int DecideDrawCardOrTi(List<int> hand,int discard)
     {
-        for (int s = 0; s < call.Count; s++)
-        {
-            if (Rules.CallCardKinds(call[s]) == Rules.PON)
-            {
-                for (int i = 0; i < hand.Count; i++)
-                {
-                    if (Rules.Same_BonusEquate(hand[i], call[s].callCards[0].card))
-                    {
-                        kan_cardIdOrCallIndex = s;
+        List<int[]> indexSets = CanCallTi(hand, discard);
 
-                        return true;
-                    }
-                }
-            }
+        if (indexSets.Count >= 1)
+        {
+            call_index = indexSets[0][0];
+            call_index2_forTi= indexSets[0][1];
+
+            discard_index = hand.Count - 1-2;
+            return TI;
         }
 
-        return true;
+        return DRAW_CARD;
     }
 }
