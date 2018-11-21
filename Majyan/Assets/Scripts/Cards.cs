@@ -111,9 +111,27 @@ public class Cards {
             }
         }
 
+        if (UserActions.Playing())
+        {
+            int sameCount = AI.CanCallKanOrPon(hands[0], discard).Count;
+            if (sameCount >= 3 - 1)
+            {
+                UserActions.canPon = true;
+
+                if (sameCount >= 4 - 1)
+                {
+                    UserActions.canKan = true;
+                }
+            }
+        }
+
         int tiPlayer = (turn + 1) % 4;
         if (tiPlayer== 0 && UserActions.Playing())
         {
+            if (AI.CanCallTi(hands[0], discard).Count >= 1)
+            {
+                UserActions.canTi = true;
+            }
             return AI.WAIT_INPUT;
         }
         else
@@ -164,24 +182,51 @@ public class Cards {
         return true;
     }
 
-    public void Pon(int turn, int callPlayer,bool bonus)
+    public bool Pon(int turn, int callPlayer,bool bonus)
     {
         int discard = tables[turn][tables[turn].Count - 1];
 
-        int[] cards = new int[3];   //鳴き牌格納用
+        if (callPlayer == 0 && UserActions.Playing())
+        {
+            if (AI.Same(discard, hands[0][UserActions.GetLatestIndex()])==false)
+            {
+                return false;
+            }
+        }
+
+        bool ignore = false;
+        if (AI.CanCallKanOrPon(hands[callPlayer], discard).Count >= 4 - 1)
+        {
+            ignore = true;
+        }
+
+        int[] cards = new int[2];   //鳴き牌格納用
         int count = 0;      //鳴き牌探索カウンタ
 
         for (int i = hands[callPlayer].Count - 1; 0 <= i; i--)
         {
             if (AI.Same(hands[callPlayer][i], discard))   //捨て牌と同じ牌の場合
             {
-                cards[count] = hands[callPlayer][i];     //鳴き牌として格納
-                hands[callPlayer].RemoveAt(i);           //手牌から取り除く
-                count++;                        //探索カウンタを増加
+                if ((ignore && bonus == false && AI.Bonus5(hands[callPlayer][i])) ||
+                    ignore && bonus && AI.Bonus5(hands[callPlayer][i]) == false)
+                {
+                    ignore = false;
+                }
+                else
+                {
+                    cards[count] = hands[callPlayer][i];     //鳴き牌として格納
+                    hands[callPlayer].RemoveAt(i);           //手牌から取り除く
+                    count++;                        //探索カウンタを増加
+
+                    if (count >= 2)
+                    {
+                        break;
+                    }
+                }
             }
         }
 
-        if (count >= 3 && AI.Bonus5(discard))     //鳴き牌の選択肢が複数の場合
+        /*if (AI.Bonus5(discard))     //鳴き牌の選択肢が複数の場合
         {
             int bonusIndex;     //赤ドラの扱い
 
@@ -205,7 +250,7 @@ public class Cards {
                     break;
                 }
             }
-        }
+        }*/
 
         tables[turn].RemoveAt(tables[turn].Count - 1);  //捨て牌を取り除く
         calls[callPlayer].Add(new CallCardsSet());   //鳴き牌を追加
@@ -215,6 +260,8 @@ public class Cards {
         ShowOrHideHand_Only(callPlayer);    //手牌を表示
         ShowTableCard_Only(turn);     //捨て牌を表示
         ShowCallCard_Only(callPlayer);      //鳴き牌を表示
+
+        return true;
     }
 
     public void ClosedKan(int turn,int kanIndex)

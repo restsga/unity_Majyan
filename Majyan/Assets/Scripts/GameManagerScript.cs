@@ -15,16 +15,19 @@ public class MethodsTimer
     //時間経過
     internal void PassTime(float deltaTime)
     {
-        if (methods.Count >= 1)
+        if (UserActions.GetSelecting() == GameManagerScript.NULL_ID)
         {
-            timers[0] -= deltaTime;
-
-            if (timers[0] <= 0f)
+            if (methods.Count >= 1)
             {
-                methods[0]();
+                timers[0] -= deltaTime;
 
-                methods.RemoveAt(0);
-                timers.RemoveAt(0);
+                if (timers[0] <= 0f)
+                {
+                    methods[0]();
+
+                    methods.RemoveAt(0);
+                    timers.RemoveAt(0);
+                }
             }
         }
     }
@@ -32,11 +35,8 @@ public class MethodsTimer
     //追加
     internal void AddTimer(Method method, float wait)
     {
-        if (UserActions.GetSelecting() == GameManagerScript.NULL_ID)
-        {
             methods.Add(method);
             timers.Add(wait);
-        }
     }
 
     internal void Reset()
@@ -94,6 +94,8 @@ public class GameManagerScript : MonoBehaviour {
         CardImages.Initialize();
         UserActions.mouseUpMethod = Discard_PL;
         UserActions.ti_PL = Ti_PL;
+        UserActions.pon_PL = Pon_PL;
+        UserActions.kan_PL = Kan_PL;
 
         Initialize_NewGame();       //ゲーム開始時用の初期化処理
     }
@@ -154,11 +156,13 @@ public class GameManagerScript : MonoBehaviour {
                 methodsTimer.AddTimer(AddKan, Times.Wait_HandKan());
             }
         }
+
+        UserActions.ResetCanCall();
     }
 
     public void DrawCard_PL()
     {
-        if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing())
+        if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing()&&UserActions.canDraw)
         {
             UserActions.ResetSelect();
             NextTurn();
@@ -191,7 +195,7 @@ public class GameManagerScript : MonoBehaviour {
         }
         else if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing())
         {
-            //何もしない(入力待ち)
+            UserActions.canDraw = true;
         }
         else
         {
@@ -246,6 +250,7 @@ public class GameManagerScript : MonoBehaviour {
             methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
         }
 
+        UserActions.ResetCanCall();
     }
 
     public void Ti_PL()
@@ -260,21 +265,30 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (callPlayer == 0 && UserActions.Playing())
         {
-            cards.Pon(phases.GetTurn(), callPlayer, AI.Bonus5(UserActions.GetLatestIndex()));
+            if(cards.Pon(phases.GetTurn(), callPlayer, AI.Bonus5(UserActions.GetLatestIndex()))==false)
+            {
+                return;
+            }
 
-            UserActions.ResetSelect();
             methodsTimer.Reset();
         }
         else
         {
             cards.Pon(phases.GetTurn(), callPlayer, ai[callPlayer].GetUseBonusCardForPon());
+            methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
         }
         phases.ChangeTurn_Call(callPlayer);
-        methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
+        UserActions.ResetCanCall();
+        UserActions.ResetSelect();
     }
 
     public void Pon_PL()
     {
+        if (UserActions.Playing())
+        {
+            callPlayer = 0;
+            Pon();
+        }
     }
 
     //暗カン
@@ -317,6 +331,8 @@ public class GameManagerScript : MonoBehaviour {
         cards.OpenKan(phases.GetTurn(), callPlayer);
 
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
+
+        UserActions.ResetCanCall();
     }
 
     public void Kan_PL()

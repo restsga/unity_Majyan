@@ -99,7 +99,7 @@ abstract public class AI {
         return indexes;
     }
 
-    protected List<int> CanCallKanOrPon(List<int> hand,int discard)
+    static public List<int> CanCallKanOrPon(List<int> hand,int discard)
     {
         List<int> indexes = new List<int>();
 
@@ -184,7 +184,7 @@ abstract public class AI {
             int count = 0;
             for (int i = 0; i < indexes.Length; i++)
             {
-                if (Same(hand[canCallIndexes[s][i]], hand[indexes[i]]))
+                if (Same(hand[canCallIndexes[s][i]], hand[indexes[0]])|| Same(hand[canCallIndexes[s][i]], hand[indexes[1]]))
                 {
                     count++;
 

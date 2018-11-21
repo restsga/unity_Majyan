@@ -21,6 +21,11 @@ public class UserActions : MonoBehaviour
     static private bool discardArea = false;
     static private int selecting = GameManagerScript.NULL_ID;
 
+    static public bool canKan = false;
+    static public bool canPon = false;
+    static public bool canTi = false;
+    static public bool canDraw = false;
+
     static private bool playing = true;
 
 
@@ -100,6 +105,7 @@ public class UserActions : MonoBehaviour
         mouseUpMethod();
 
         movingCardId = GameManagerScript.NULL_ID;
+        movingCardIndex = GameManagerScript.NULL_ID;
     }
 
     static public void MouseClick(int cardIndex,Cards cards)
@@ -130,6 +136,9 @@ public class UserActions : MonoBehaviour
                 kan_PL();
             }
 
+            movingCardId = GameManagerScript.NULL_ID;
+            movingCardIndex = GameManagerScript.NULL_ID;
+
             cards.ShowOrHideHand_Only(0);
         }
     }
@@ -146,15 +155,24 @@ public class UserActions : MonoBehaviour
 
     public void OnClickTiButton()
     {
-        selecting = TI_SELECTING;
+        if (canTi)
+        {
+            selecting = TI_SELECTING;
+        }
     }
     public void OnClickPonButton()
     {
-        selecting = PON_SELECTING;
+        if (canPon)
+        {
+            selecting = PON_SELECTING;
+        }
     }
     public void OnClickKanButton()
     {
-        selecting = KAN_SELECTING;
+        if (canTi)
+        {
+            selecting = KAN_SELECTING;
+        }
     }
 
     static public void ResetSelect()
@@ -165,5 +183,13 @@ public class UserActions : MonoBehaviour
         {
             handIndexes_forCall[i] = GameManagerScript.NULL_ID;
         }
+    }
+
+    static public void ResetCanCall()
+    {
+        canKan = false;
+        canPon = false;
+        canTi = false;
+        canDraw = false;
     }
 }

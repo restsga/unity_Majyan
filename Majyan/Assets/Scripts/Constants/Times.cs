@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Times{
 
-    private static float speed = 2.0f;
+    private static float speed = 1.0f;
 
     public static float Wait_Deal()
     {
