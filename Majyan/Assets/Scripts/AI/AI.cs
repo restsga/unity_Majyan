@@ -37,7 +37,7 @@ abstract public class AI {
         return useBonusCard_forPon;
     }
 
-    protected List<int> CanClosedKan(List<int> hand)
+    static public List<int> CanClosedKan(List<int> hand)
     {
         List<int> indexes = new List<int>();
         indexes.Clear();
@@ -77,7 +77,7 @@ abstract public class AI {
         return indexes;
     }
 
-    protected List<int> CanAddKan(List<int> hand, List<CallCardsSet> call)
+    static public List<int> CanAddKan(List<int> hand, List<CallCardsSet> call)
     {
         List<int> indexes = new List<int>();
         indexes.Clear();

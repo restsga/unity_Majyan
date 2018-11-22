@@ -84,18 +84,18 @@ public class GameManagerScript : MonoBehaviour {
     {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        //235:暗カン,277:加カン、明カン,908:明カン
-        seed = 235;
+        //272:PL明カン→PL加カン
+        seed = 272;
         seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000 + seed);         //seed値を入力
 
-        //GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
+        GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
 
         CardImages.Initialize();
-        UserActions.mouseUpMethod = Discard_PL;
         UserActions.ti_PL = Ti_PL;
         UserActions.pon_PL = Pon_PL;
         UserActions.kan_PL = Kan_PL;
+        UserActions.discard_PL = Discard_PL;
 
         Initialize_NewGame();       //ゲーム開始時用の初期化処理
     }
@@ -162,7 +162,8 @@ public class GameManagerScript : MonoBehaviour {
 
     public void DrawCard_PL()
     {
-        if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing()&&UserActions.canDraw)
+        if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing()&&
+            UserActions.canDraw&&UserActions.GetSelecting()==NULL_ID)
         {
             UserActions.ResetSelect();
             NextTurn();
@@ -217,6 +218,8 @@ public class GameManagerScript : MonoBehaviour {
         if (phases.GetTurn() == 0&&UserActions.WantToDiscard())
         {
             Discard();
+
+            UserActions.ResetSelect();
         }
     }
 
@@ -242,6 +245,8 @@ public class GameManagerScript : MonoBehaviour {
             methodsTimer.Reset();
 
             phases.ChangeTurn_Default();
+
+            UserActions.SelectingDiscard();
         }
         else
         {
@@ -265,12 +270,13 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (callPlayer == 0 && UserActions.Playing())
         {
-            if(cards.Pon(phases.GetTurn(), callPlayer, AI.Bonus5(UserActions.GetLatestIndex()))==false)
+            if(cards.Pon(phases.GetTurn(), callPlayer, AI.Bonus5(UserActions.GetIndexOnly()))==false)
             {
                 return;
             }
 
             methodsTimer.Reset();
+
         }
         else
         {
@@ -280,6 +286,12 @@ public class GameManagerScript : MonoBehaviour {
         phases.ChangeTurn_Call(callPlayer);
         UserActions.ResetCanCall();
         UserActions.ResetSelect();
+
+        if (callPlayer == 0 && UserActions.Playing())
+        {
+            UserActions.SelectingDiscard();
+        }
+
     }
 
     public void Pon_PL()
@@ -296,7 +308,10 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            cards.ClosedKan(phases.GetTurn(), UserActions.GetLatestIndex());
+            if( cards.ClosedKan(phases.GetTurn(), UserActions.GetIndexOnly())==false)
+            {
+                return;
+            }
         }
         else
         {
@@ -304,16 +319,20 @@ public class GameManagerScript : MonoBehaviour {
         }
         methodsTimer.AddTimer(OpenAddBonus,Times.Wait_OpenAddBonus());
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
+
+        UserActions.ResetCanCall();
+        UserActions.ResetSelect();
     }
 
     //加カン
     private void AddKan()
     {
-        OpenAddBonus();
-
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            cards.AddKan(phases.GetTurn(), UserActions.GetLatestIndex());
+            if(cards.AddKan(phases.GetTurn(), UserActions.GetIndexOnly()) == false)
+            {
+                return;
+            }
         }
         else
         {
@@ -321,23 +340,35 @@ public class GameManagerScript : MonoBehaviour {
         }
 
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
+        UserActions.ResetCanCall();
+        UserActions.ResetSelect();
     }
     
     //明カン
     private void OpenKan()
     {
-        OpenAddBonus();
-
         cards.OpenKan(phases.GetTurn(), callPlayer);
+        phases.ChangeTurn_Call(callPlayer);
 
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
 
         UserActions.ResetCanCall();
+        UserActions.ResetSelect();
     }
 
     public void Kan_PL()
     {
-
+        if (UserActions.canOpenKan)
+        {
+            callPlayer = 0;
+            OpenKan();
+        }
+        else if(UserActions.canClosedKan|| UserActions.canAddKan)
+        {
+            callPlayer = 0;
+            ClosedKan();
+            AddKan();
+        }
     }
 
     //ドラ表示牌をめくる
@@ -349,9 +380,16 @@ public class GameManagerScript : MonoBehaviour {
     //嶺上牌を引く
     private void DrawKanCard()
     {
-        cards.DrawKanCard(phases.GetTurn());
+        cards.DrawKanCard(phases.GetTurn(),ai);
 
-        methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
+        if (phases.GetTurn() == 0 && UserActions.Playing())
+        {
+            UserActions.SelectingDiscard();
+        }
+        else
+        {
+            methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
+        }
     }
     
     //牌のゲームオブジェクトを削除
