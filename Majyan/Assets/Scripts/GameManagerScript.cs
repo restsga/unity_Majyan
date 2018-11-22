@@ -84,8 +84,8 @@ public class GameManagerScript : MonoBehaviour {
     {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        //272:PL明カン→PL加カン
-        seed = 272;
+        //272:PL明カン→PL加カン,977:初手PL暗カン
+        //seed = 977;
         seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000 + seed);         //seed値を入力
 
@@ -139,7 +139,9 @@ public class GameManagerScript : MonoBehaviour {
     //牌を引く
     private void DrawCard()
     {
-        int actionId= cards.DrawCard(phases.GetTurn(),ai);
+        UserActions.ResetCanCall();
+
+        int actionId = cards.DrawCard(phases.GetTurn(),ai);
 
         if (phases.GetTurn() != 0 || UserActions.Playing()==false)
         {
@@ -156,8 +158,6 @@ public class GameManagerScript : MonoBehaviour {
                 methodsTimer.AddTimer(AddKan, Times.Wait_HandKan());
             }
         }
-
-        UserActions.ResetCanCall();
     }
 
     public void DrawCard_PL()
