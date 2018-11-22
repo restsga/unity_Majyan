@@ -66,14 +66,37 @@ public class Cards {
         }
     }
 
-    //牌を引く
     public int DrawCard(int turn, AI[] ai)
     {
-        hands[turn].Add(deck.DrawCard());      //手番のプレイヤーの手牌に追加
+        return DrawCard(turn, ai, true);
+    }
+
+    //牌を引く
+    private int DrawCard(int turn, AI[] ai,bool usual)
+    {
+        if (usual)
+        {
+            hands[turn].Add(deck.DrawCard());      //手番のプレイヤーの手牌に追加
+        }
+        else
+        {
+            hands[turn].Add(deck.DrawKanCard());      //手番のプレイヤーの手牌に追加
+        }
         ShowOrHideHand_Only(turn);        //手番プレイヤーの手牌を表示
 
         if (turn == 0 && UserActions.Playing())
         {
+            UserActions.SelectingDiscard();
+
+            if (AI.CanClosedKan(hands[0]).Count >= 1)
+            {
+                UserActions.canClosedKan = true;
+            }
+            if (AI.CanAddKan(hands[0], calls[0]).Count >= 1)
+            {
+                UserActions.canAddKan = true;
+            }
+
             return AI.WAIT_INPUT;
         }
         else
@@ -120,7 +143,7 @@ public class Cards {
 
                 if (sameCount >= 4 - 1)
                 {
-                    UserActions.canKan = true;
+                    UserActions.canOpenKan = true;
                 }
             }
         }
@@ -188,7 +211,7 @@ public class Cards {
 
         if (callPlayer == 0 && UserActions.Playing())
         {
-            if (AI.Same(discard, hands[0][UserActions.GetLatestIndex()])==false)
+            if (AI.Same(discard, hands[0][UserActions.GetIndexOnly()])==false)
             {
                 return false;
             }
@@ -226,32 +249,6 @@ public class Cards {
             }
         }
 
-        /*if (AI.Bonus5(discard))     //鳴き牌の選択肢が複数の場合
-        {
-            int bonusIndex;     //赤ドラの扱い
-
-            if (bonus == false) //赤ドラを鳴き牌に含めない場合
-            {
-                bonusIndex = 2; //鳴き牌格納用配列の末尾へ格納
-            }
-            else
-            {
-                bonusIndex = 0; //鳴き牌格納用配列の先頭へ格納
-            }
-
-            for (int i = 0; i < cards.Length; i++)
-            {
-                if (AI.Bonus5(cards[i]))     //赤ドラの場合
-                {
-                    //赤ドラとその他の牌を入れ替える
-                    int keep = cards[bonusIndex];
-                    cards[bonusIndex] = cards[i];
-                    cards[i] = keep;
-                    break;
-                }
-            }
-        }*/
-
         tables[turn].RemoveAt(tables[turn].Count - 1);  //捨て牌を取り除く
         calls[callPlayer].Add(new CallCardsSet());   //鳴き牌を追加
         //ポンとして格納
@@ -264,8 +261,14 @@ public class Cards {
         return true;
     }
 
-    public void ClosedKan(int turn,int kanIndex)
+    public bool ClosedKan(int turn, int kanIndex)
     {
+        if ((AI.CanClosedKan(hands[turn]).FindIndex
+            (index => AI.Same(hands[turn][index], hands[turn][kanIndex]))>= 0)==false)
+        {
+            return false;
+        }
+
         int[] callCard = new int[4];   //カンに用いる牌の格納用配列
         int count = 0;  //格納カウンタ
 
@@ -283,7 +286,7 @@ public class Cards {
             }
         }
 
-        hands[turn].RemoveAll((card)=>card==callCard[0]);
+        hands[turn].RemoveAll((card) => card == callCard[0]);
 
         calls[turn].Add(new CallCardsSet());  //鳴き牌を追加
         calls[turn][calls[turn].Count - 1].ClosedKan(callCard, turn); //暗カンとして格納
@@ -292,11 +295,21 @@ public class Cards {
         ShowCallCard_Only(turn);          //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
+
+        return true;
     }
 
     //加カン
-    public void AddKan(int turn, int kanIndex)
+    public bool AddKan(int turn, int kanIndex)
     {
+        if ((AI.CanAddKan(hands[turn], calls[turn]).FindIndex
+            (index => AI.Same(hands[turn][index], hands[turn][kanIndex]))>= 0)==false)
+        {
+            return false;
+        }
+
+        OpenAddBonusCard();
+
         int callCard = hands[turn][kanIndex];
         hands[turn].RemoveAt(kanIndex);
 
@@ -314,12 +327,16 @@ public class Cards {
         ShowCallCard_Only(turn);          //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
+
+        return true;
     }
 
     //明カン
     public void OpenKan(int turn, int callPlayer)
     {
         int discard = tables[turn][tables[turn].Count - 1];
+
+        OpenAddBonusCard();
 
         int[] cards = new int[3];       //鳴き牌格納用
         int count = 0;      //鳴き牌探索カウンタ
@@ -342,6 +359,8 @@ public class Cards {
         ShowOrHideHand_Only(callPlayer);    //手牌を表示
         ShowTableCard_Only(turn);     //捨て牌を表示
         ShowCallCard_Only(callPlayer);      //鳴き牌を表示
+
+        deck.AddPendingShowBonusCount();
     }
 
     public void OpenAddBonusCard()
@@ -349,9 +368,9 @@ public class Cards {
         deck.AddBonusCard();
     }
 
-    public void DrawKanCard(int turn)
+    public void DrawKanCard(int turn,AI[] ai)
     {
-        hands[turn].Add(deck.DrawKanCard());      //手番のプレイヤーの手牌に追加
+        DrawCard(turn, ai, false);
     }
     //プレイヤー1名分の手牌を表示(基底関数)
     private void ShowHand_Only(int player, bool show)

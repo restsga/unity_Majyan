@@ -5,23 +5,24 @@ using UnityEngine;
 
 public class UserActions : MonoBehaviour
 {
-    static public readonly int TI_SELECTING = 1, PON_SELECTING = 2, KAN_SELECTING = 3;
+    static public readonly int TI_SELECTING = 1, PON_SELECTING = 2, KAN_SELECTING = 3,DISCARD_SELECTING=4;
 
     public delegate void UserInputMethod();
-    static public UserInputMethod mouseUpMethod;
     static public UserInputMethod ti_PL;
     static public UserInputMethod pon_PL;
     static public UserInputMethod kan_PL;
+    static public UserInputMethod discard_PL;
 
     static private int movingCardId = GameManagerScript.NULL_ID;
     static private int movingCardIndex = GameManagerScript.NULL_ID;
     static public int[] handIndexes_forCall = { GameManagerScript.NULL_ID, GameManagerScript.NULL_ID };
     static private int nextIndex_forCall = 0;
 
-    static private bool discardArea = false;
     static private int selecting = GameManagerScript.NULL_ID;
 
-    static public bool canKan = false;
+    static public bool canClosedKan = false;
+    static public bool canAddKan = false;
+    static public bool canOpenKan = false;
     static public bool canPon = false;
     static public bool canTi = false;
     static public bool canDraw = false;
@@ -32,23 +33,20 @@ public class UserActions : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (mouseUpMethod != null)
+        if (Input.touchSupported)
         {
-            if (Input.touchSupported)
+            //タッチ対応端末においてタッチが検出されなかった場合
+            if (Input.touchCount <= 0)
             {
-                //タッチ対応端末においてタッチが検出されなかった場合
-                if (Input.touchCount <= 0)
-                {
-                    MouseUp();
-                }
+                ResetMoving();
             }
-            else
+        }
+        else
+        {
+            //タッチ非対応端末においてクリックが終わったことが検出された場合
+            if (Input.GetMouseButtonUp(0))
             {
-                //タッチ非対応端末においてクリックが終わったことが検出された場合
-                if (Input.GetMouseButtonUp(0))
-                {
-                    MouseUp();
-                }
+                ResetMoving();
             }
         }
     }
@@ -60,7 +58,7 @@ public class UserActions : MonoBehaviour
 
     static public bool WantToDiscard()
     {
-        return playing && discardArea && movingCardId >= 0;
+        return playing && handIndexes_forCall[0]>=0;
     }
 
     static public int GetMovingCardIndex()
@@ -68,14 +66,19 @@ public class UserActions : MonoBehaviour
         return movingCardIndex;
     }
 
-    static public int GetLatestIndex()
+    static public int GetIndexOnly()
     {
-        return handIndexes_forCall[(nextIndex_forCall - 1) % 2];
+        return handIndexes_forCall[0];
     }
 
     static public int GetSelecting()
     {
         return selecting;
+    }
+
+    static public void SelectingDiscard()
+    {
+        selecting = DISCARD_SELECTING;
     }
 
     //
@@ -99,28 +102,33 @@ public class UserActions : MonoBehaviour
         }
     }
 
-    //
-    public void MouseUp()
-    {
-        mouseUpMethod();
-
-        movingCardId = GameManagerScript.NULL_ID;
-        movingCardIndex = GameManagerScript.NULL_ID;
-    }
-
     static public void MouseClick(int cardIndex,Cards cards)
     {
         if (selecting!=GameManagerScript.NULL_ID) {
             int already = Array.IndexOf(handIndexes_forCall, cardIndex);
             if (already >= 0)
             {
-                handIndexes_forCall[already] = GameManagerScript.NULL_ID;
-                nextIndex_forCall = already;
+                if (selecting == DISCARD_SELECTING)
+                {
+                    discard_PL();
+                }
+                else
+                {
+                    handIndexes_forCall[already] = GameManagerScript.NULL_ID;
+                    nextIndex_forCall = already;
+                }
             }
             else
             {
-                handIndexes_forCall[nextIndex_forCall % 2] = cardIndex;
-                nextIndex_forCall++;
+                if (selecting !=TI_SELECTING)
+                {
+                    handIndexes_forCall[0] = cardIndex;
+                }
+                else
+                {
+                    handIndexes_forCall[nextIndex_forCall % 2] = cardIndex;
+                    nextIndex_forCall++;
+                }
             }
 
             if (selecting == TI_SELECTING)
@@ -143,16 +151,6 @@ public class UserActions : MonoBehaviour
         }
     }
 
-    public void InDiscardArea()
-    {
-        discardArea = true;
-    }
-
-    public void OutDiscardArea()
-    {
-        discardArea = false;
-    }
-
     public void OnClickTiButton()
     {
         if (canTi)
@@ -169,7 +167,11 @@ public class UserActions : MonoBehaviour
     }
     public void OnClickKanButton()
     {
-        if (canTi)
+        if (canOpenKan)
+        {
+            kan_PL();
+        }
+        else if (canClosedKan||canAddKan)
         {
             selecting = KAN_SELECTING;
         }
@@ -187,9 +189,17 @@ public class UserActions : MonoBehaviour
 
     static public void ResetCanCall()
     {
-        canKan = false;
+        canClosedKan = false;
+        canAddKan = false;
+        canOpenKan = false;
         canPon = false;
         canTi = false;
         canDraw = false;
+    }
+
+    static public void ResetMoving()
+    {
+        movingCardId = GameManagerScript.NULL_ID;
+        movingCardIndex = GameManagerScript.NULL_ID;
     }
 }
