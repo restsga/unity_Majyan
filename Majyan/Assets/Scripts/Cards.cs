@@ -115,6 +115,20 @@ public class Cards {
         ShowOrHideHand_Only(turn);    //手牌を表示
         ShowTableCard_Only(turn);     //捨て牌を表示
 
+        //仮配置(聴牌表示)
+        if (Array.FindIndex<bool>(AI.ReadyAndWaiting(hands[turn]), wait => wait == true) >= 0)
+        {
+            SpriteRenderer sr= GameObject.Find("Ready").GetComponent<SpriteRenderer>();
+            Color color= sr.color;
+            color.a = 0.75f;
+            sr.color = color;
+        }
+
+        if (deck.IsExhaustionDeck())
+        {
+            return AI.DRAWN_GAME;
+        }
+
         int playing = 0;
         if (UserActions.Playing())
         {
@@ -850,6 +864,7 @@ internal class Deck
             bonusObjects.Add(cardObject);      //メモリ解放用のリストに格納
         }
     }
+
     public int[] GetBonusCards()
     {
         int[] array = new int[bonusCards.Length];
@@ -864,5 +879,16 @@ internal class Deck
     public int GetShowBonusIndex()
     {
         return showBonusIndex;
+    }
+
+    public bool IsExhaustionDeck()
+    {
+        return (deck.Length - 1) - replacementTopIndex < deckTopIndex;
+    }
+
+    public bool CanKan()
+    {
+
+        return true;
     }
 }

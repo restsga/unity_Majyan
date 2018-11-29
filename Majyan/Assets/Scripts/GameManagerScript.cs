@@ -56,10 +56,6 @@ public class GameManagerScript : MonoBehaviour {
         //カンドラ実装時に変更
         //嶺上牌を引く
 
-    // オブジェクト //
-    // 画像読み込み
-    public Sprite[] cardImages = new Sprite[38];        //牌画像
-
     // クラス
     private Cards cards = new Cards();
     private Scores scores = new Scores();   //得点
@@ -84,8 +80,8 @@ public class GameManagerScript : MonoBehaviour {
     {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
-        //272:PL明カン→PL加カン
-        seed = 272;
+        //272:PL明カン→PL加カン,552&977:初手PL暗カン
+        seed = 540;
         seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000 + seed);         //seed値を入力
 
@@ -139,7 +135,9 @@ public class GameManagerScript : MonoBehaviour {
     //牌を引く
     private void DrawCard()
     {
-        int actionId= cards.DrawCard(phases.GetTurn(),ai);
+        UserActions.ResetCanCall();
+
+        int actionId = cards.DrawCard(phases.GetTurn(),ai);
 
         if (phases.GetTurn() != 0 || UserActions.Playing()==false)
         {
@@ -156,8 +154,6 @@ public class GameManagerScript : MonoBehaviour {
                 methodsTimer.AddTimer(AddKan, Times.Wait_HandKan());
             }
         }
-
-        UserActions.ResetCanCall();
     }
 
     public void DrawCard_PL()
@@ -185,6 +181,13 @@ public class GameManagerScript : MonoBehaviour {
         }
 
         methodsTimer.AddTimer(OpenAddBonus, Times.Wait_OpenAddBonus());
+
+        if (actionId == AI.DRAWN_GAME)
+        {
+            methodsTimer.AddTimer(DrawnGame, Times.Wait_DrawnGame());
+
+            return;
+        }
 
         if (actionId == AI.OPEN_KAN)
         {
@@ -392,6 +395,12 @@ public class GameManagerScript : MonoBehaviour {
         }
     }
     
+    //流局
+    private void DrawnGame()
+    {
+
+    }
+
     //牌のゲームオブジェクトを削除
     static public void DestroyGameObjects(ref List<GameObject> gameObjects)
     {
