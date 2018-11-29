@@ -20,7 +20,7 @@ public class Times{
     }
     public static float Wait_CallToDiscard()
     {
-        return 0.5f / speed;
+        return 1.0f / speed;
     }
     public static float Wait_Call()
     {
@@ -41,5 +41,9 @@ public class Times{
     public static float Wait_DrawKanCard()
     {
         return 1.0f / speed;
+    }
+    public static float Wait_DrawnGame()
+    {
+        return 2.0f / speed;
     }
 }

@@ -177,6 +177,10 @@ public class UserActions : MonoBehaviour
         }
     }
 
+    public void OnClickWinButton()
+    {
+    }
+
     static public void ResetSelect()
     {
         selecting = GameManagerScript.NULL_ID;
