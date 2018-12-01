@@ -11,6 +11,10 @@ public class Cards {
     private List<int>[] hands = new List<int>[4];
     private List<int>[] tables = new List<int>[4];
     private List<CallCardsSet>[] calls = new List<CallCardsSet>[4];
+    private bool[][] waitingCards = new bool[4][];
+
+    // ステータス //
+    private bool[] ready = new bool[4];
 
     // オブジェクト //
     private List<GameObject>[] handObjects = new List<GameObject>[4];       //手牌
@@ -19,18 +23,19 @@ public class Cards {
     
     public Cards()
     {
-        for(int i = 0; i < hands.Length; i++)
-        {
-            hands[i] = new List<int>();
-            tables[i] = new List<int>();
-            calls[i] = new List<CallCardsSet>();
+        // 配列に格納したリストの実体化 //
+        ArrayBase.Initialize(hands);
+        ArrayBase.Initialize(tables);
+        ArrayBase.Initialize(calls);
+        ArrayBase.Initialize(handObjects);
+        ArrayBase.Initialize(tableObjects);
+        ArrayBase.Initialize(callObjects);
 
-            handObjects[i] = new List<GameObject>();
-            tableObjects[i] = new List<GameObject>();
-            callObjects[i] = new List<GameObject>();
-        }
+        // 配列の初期化 //
+        ArrayBase.Initialize(waitingCards,34,false);
     }
 
+    //新規に対戦を開始するための初期化
     public void Initialize_NewGame()
     {
         deck.Initialize_NewGame();
@@ -38,15 +43,16 @@ public class Cards {
         Initialize_NextRound();
     }
 
+    //ラウンド開始のための初期化
     public void Initialize_NextRound()
     {
         deck.Initialize_NextRound();
 
-        for (int i = 0; i < hands.Length; i++) {
-            hands[i].Clear();
-            tables[i].Clear();
-            calls[i].Clear();
-        }
+        ArrayBase.ListClear(hands);
+        ArrayBase.ListClear(tables);
+        ArrayBase.ListClear(calls);
+
+        ArrayBase.ResetArray(waitingCards,false);
     }
 
     //配牌
@@ -57,35 +63,50 @@ public class Cards {
         {
             for (int i = 0; i < 13; i++)
             {
-                hands[p].Add(deck.DrawCard());   //山の一番上の牌を手牌として取得
+                //山の一番上の牌を手牌として取得
+                hands[p].Add(deck.DrawCard());   
             }
 
-            hands[p].Sort();        //手牌をソートする
+            hands[p].Sort();        //後で消す
 
-            ShowOrHideHand_Only(p); //手牌を表示
+            //手牌を表示
+            ShowOrHideHand_Only(p); 
         }
     }
 
-    public int DrawCard(int turn, AI[] ai)
+    //牌を引く(牌山)
+    public int DrawDeckCard(int turn, AI[] ai)
     {
         return DrawCard(turn, ai, true);
     }
-
-    //牌を引く
-    private int DrawCard(int turn, AI[] ai,bool usual)
+    //牌を引く(嶺上牌)
+    public void DrawKanCard(int turn, AI[] ai)
     {
-        if (usual)
+        DrawCard(turn, ai, false);
+    }
+    private int DrawCard(int turn, AI[] ai,bool draw_deck)
+    {
+        if (draw_deck)
         {
-            hands[turn].Add(deck.DrawCard());      //手番のプレイヤーの手牌に追加
+            //牌山から牌を引く
+            hands[turn].Add(deck.DrawCard());
         }
         else
         {
-            hands[turn].Add(deck.DrawKanCard());      //手番のプレイヤーの手牌に追加
+            //嶺上牌を引く
+            hands[turn].Add(deck.DrawKanCard());
         }
-        ShowOrHideHand_Only(turn);        //手番プレイヤーの手牌を表示
+        //手番プレイヤーの手牌を表示
+        ShowOrHideHand_Only(turn);        
 
         if (turn == 0 && UserActions.Playing())
         {
+            /* プレイヤーの手番の場合
+             * 
+             * 入力待ちモードに移行
+             * 暗槓、加槓が出来るならフラグを立てる
+             */
+
             UserActions.SelectingDiscard();
 
             if (AI.CanClosedKan(hands[0]).Count >= 1)
@@ -101,6 +122,7 @@ public class Cards {
         }
         else
         {
+            //AIの手番の場合、行動を決定して終了
             return ai[turn].DecideDiscardOrKan(hands[turn], calls[turn]);
         }
     }
@@ -108,63 +130,87 @@ public class Cards {
     //捨て牌
     public int Discard(int discardIndex,int turn,AI[] ai,ref int callPlayer)
     {
+        /* 捨て牌をする
+         * 
+         * 河に追加して手牌から削除する
+         */
         int discard = hands[turn][discardIndex];
-        tables[turn].Add(discard);    //捨て牌として追加
-        hands[turn].RemoveAt(discardIndex);       //手牌から取り除く
+        tables[turn].Add(discard);    
+        hands[turn].RemoveAt(discardIndex);       
 
-        ShowOrHideHand_Only(turn);    //手牌を表示
-        ShowTableCard_Only(turn);     //捨て牌を表示
+        //手牌と河の再表示
+        ShowOrHideHand_Only(turn);    
+        ShowTableCard_Only(turn,false);
+
+        //聴牌判定
+        waitingCards[turn] = AI.ReadyAndWaiting(hands[turn],ref ready[turn]);
 
         //仮配置(聴牌表示)
-        if (Array.FindIndex<bool>(AI.ReadyAndWaiting(hands[turn]), wait => wait == true) >= 0)
+        if (ready[turn])
         {
-            SpriteRenderer sr= GameObject.Find("Ready").GetComponent<SpriteRenderer>();
-            Color color= sr.color;
-            color.a = 0.75f;
-            sr.color = color;
+            Messages.ShowMessage(Messages.READY,turn);
         }
 
         if (deck.IsExhaustionDeck())
         {
+            //牌山が無くなった場合は流局
             return AI.DRAWN_GAME;
         }
 
+        // ポン、カン //
+
+        //プレイヤーが遊んでいるならIDが0の競技者を行動決定対象から除外
         int playing = 0;
         if (UserActions.Playing())
         {
             playing = 1;
         }
+        //ポン、カンの有無を決定
         for(int i = 0+playing; i < hands.Length; i++)
         {
+            //捨て牌をした競技者が鳴くことは不可
             if (turn != i)
             {
+                //鳴きの有無を取得
                 int actionId= ai[i].DecideCallKanOrPon(hands[i], discard);
-
                 if (actionId != AI.NOT_CALL)
                 {
+                    //鳴きを行う場合は競技者IDを保存
                     callPlayer = i;
+                    //ポン、カンは衝突せず、チーより優先されるので他の競技者についての処理は不要
                     return actionId;
                 }
             }
         }
-
+        //プレイヤーが遊んでいるならプレイヤーによる鳴きが可能かを決定する
         if (UserActions.Playing())
         {
+            //手牌内の捨て牌と同一の牌の枚数
             int sameCount = AI.CanCallKanOrPon(hands[0], discard).Count;
+
             if (sameCount >= 3 - 1)
             {
+                //ポン可能
                 UserActions.canPon = true;
 
                 if (sameCount >= 4 - 1)
                 {
+                    //カンも可能
                     UserActions.canOpenKan = true;
                 }
             }
         }
 
+        // チー //
+
+        //チーを出来る競技者のID
         int tiPlayer = (turn + 1) % 4;
         if (tiPlayer== 0 && UserActions.Playing())
         {
+            /* チーを出来る競技者がプレイヤーだった場合
+             * 
+             * チーが可能な手牌ならフラグを立てる
+             */
             if (AI.CanCallTi(hands[0], discard).Count >= 1)
             {
                 UserActions.canTi = true;
@@ -173,72 +219,87 @@ public class Cards {
         }
         else
         {
+            /* チーを出来る競技者がAIだった場合
+             * 
+             * 牌山から牌を引くかチーをするかを決定
+             */
             return ai[tiPlayer].DecideDrawCardOrTi(hands[tiPlayer], discard);
         }
     }
 
+    //チー
     public bool Ti(int turn,int[] indexes_raw)
     {
+        //直前の捨て牌、チーをする競技者のID、公開しようとしている牌を取得
         int discard = tables[turn][tables[turn].Count - 1];
-
         int tiPlayer = (turn + 1) % 4;
-
-        int[] indexes = new int[indexes_raw.Length];
-
-        for(int i = 0; i < indexes.Length; i++)
-        {
-            indexes[i] = indexes_raw[i];
-        }
+        int[] indexes = ArrayBase.CopyForEdit(indexes_raw);
 
         Array.Sort(indexes);
 
         if (AI.IsThisSetCanTi(hands[tiPlayer], discard, indexes)==false)
         {
+            //公開しようとしている牌ではチーが出来ない場合は処理を行わずに終了
             return false;
         }
 
+        //格納(表示)用に並び順を反転
         Array.Reverse(indexes);
 
-        int[] cards = new int[2];   //鳴き牌格納用
-
+        /* 鳴き牌のデータを生成
+         * 
+         * 手牌から公開する牌を保存
+         * 公開する牌を手牌から削除
+         * 直前の捨て牌を河から削除
+         * 鳴き牌を生成し、チーとして格納
+         */
+        int[] cards = new int[2];   
         for (int i = 0; i < indexes.Length; i++)
         {
-            cards[i] = hands[tiPlayer][indexes[i]];     //鳴き牌として格納
-            hands[tiPlayer].RemoveAt(indexes[i]);       //手牌から取り除く
+            cards[i] = hands[tiPlayer][indexes[i]];     
+            hands[tiPlayer].RemoveAt(indexes[i]);       
         }
+        tables[turn].RemoveAt(tables[turn].Count - 1);
+        calls[tiPlayer].Add(new CallCardsSet());    
+        calls[tiPlayer][calls[tiPlayer].Count - 1].Ti(cards,discard, tiPlayer, turn); 
 
-        tables[turn].RemoveAt(tables[turn].Count - 1);  //捨て牌から取り除く
+        //手牌、河、鳴き牌を再表示
+        ShowOrHideHand_Only(tiPlayer);
+        ShowTableCard_Only(turn,false);     
+        ShowCallCard_Only(tiPlayer);
 
-        calls[tiPlayer].Add(new CallCardsSet());    //鳴き牌を追加
-        calls[tiPlayer][calls[tiPlayer].Count - 1].Ti(cards,discard, tiPlayer, turn); //チーとして格納
+        //メッセージを表示
+        Messages.ShowMessage(Messages.TI,tiPlayer);
 
-        ShowOrHideHand_Only(tiPlayer);    //手牌を表示
-        ShowTableCard_Only(turn);     //捨て牌を表示
-        ShowCallCard_Only(tiPlayer);      //鳴き牌を表示
-
+        //処理の完了を通知
         return true;
     }
 
+    //ポン
     public bool Pon(int turn, int callPlayer,bool bonus)
     {
+        //捨て牌を取得
         int discard = tables[turn][tables[turn].Count - 1];
 
         if (callPlayer == 0 && UserActions.Playing())
         {
-            if (AI.Same(discard, hands[0][UserActions.GetIndexOnly()])==false)
+            if (AI.Same(discard, hands[0][UserActions.GetIndexOnly()]) == false)
             {
+                //プレイヤーが公開しようとしている牌と捨て牌の種類が一致しない場合は処理を行わずに終了
                 return false;
             }
         }
 
+        //選択肢が複数ある場合に手牌から1つを公開用として扱わないようにするためのフラグ
         bool ignore = false;
         if (AI.CanCallKanOrPon(hands[callPlayer], discard).Count >= 4 - 1)
         {
             ignore = true;
         }
 
-        int[] cards = new int[2];   //鳴き牌格納用
-        int count = 0;      //鳴き牌探索カウンタ
+        //公開する牌とそのカウンタ
+        int[] cards = new int[2];   
+        int count = 0;      
 
         for (int i = hands[callPlayer].Count - 1; 0 <= i; i--)
         {
@@ -247,14 +308,20 @@ public class Cards {
                 if ((ignore && bonus == false && AI.Bonus5(hands[callPlayer][i])) ||
                     ignore && bonus && AI.Bonus5(hands[callPlayer][i]) == false)
                 {
+                    //選択肢が複数ある場合で公開対象から除外する牌の場合
+
                     ignore = false;
                 }
                 else
                 {
-                    cards[count] = hands[callPlayer][i];     //鳴き牌として格納
-                    hands[callPlayer].RemoveAt(i);           //手牌から取り除く
-                    count++;                        //探索カウンタを増加
-
+                    /* 選択肢が単一または除外対象の牌ではない場合
+                     * 
+                     * 公開する牌を格納して手牌から取り除く
+                     * 探索カウンタを増加、格納用配列が埋まった場合は格納処理を終了
+                     */
+                    cards[count] = hands[callPlayer][i];     
+                    hands[callPlayer].RemoveAt(i);           
+                    count++;                        
                     if (count >= 2)
                     {
                         break;
@@ -263,14 +330,20 @@ public class Cards {
             }
         }
 
-        tables[turn].RemoveAt(tables[turn].Count - 1);  //捨て牌を取り除く
-        calls[callPlayer].Add(new CallCardsSet());   //鳴き牌を追加
+        //捨て牌を河から削除
+        tables[turn].RemoveAt(tables[turn].Count - 1);
+
         //ポンとして格納
+        calls[callPlayer].Add(new CallCardsSet());   
         calls[callPlayer][calls[callPlayer].Count - 1].Pon(cards,discard, callPlayer, turn);
 
-        ShowOrHideHand_Only(callPlayer);    //手牌を表示
-        ShowTableCard_Only(turn);     //捨て牌を表示
-        ShowCallCard_Only(callPlayer);      //鳴き牌を表示
+        //手牌、河、鳴き牌を再表示
+        ShowOrHideHand_Only(callPlayer);    
+        ShowTableCard_Only(turn,false);     
+        ShowCallCard_Only(callPlayer);
+
+        //メッセージを表示
+        Messages.ShowMessage(Messages.PON,callPlayer);
 
         return true;
     }
@@ -310,6 +383,8 @@ public class Cards {
 
         deck.AddPendingShowBonusCount();
 
+        Messages.ShowMessage(Messages.KAN,turn);
+
         return true;
     }
 
@@ -342,6 +417,8 @@ public class Cards {
 
         deck.AddPendingShowBonusCount();
 
+        Messages.ShowMessage(Messages.KAN,turn);
+
         return true;
     }
 
@@ -371,23 +448,47 @@ public class Cards {
         calls[callPlayer][calls[callPlayer].Count - 1].OpenKan(cards,discard, callPlayer, turn);
 
         ShowOrHideHand_Only(callPlayer);    //手牌を表示
-        ShowTableCard_Only(turn);     //捨て牌を表示
+        ShowTableCard_Only(turn,false);     //捨て牌を表示
         ShowCallCard_Only(callPlayer);      //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
+
+        Messages.ShowMessage(Messages.KAN,callPlayer);
     }
 
     public void OpenAddBonusCard()
     {
         deck.AddBonusCard();
     }
-
-    public void DrawKanCard(int turn,AI[] ai)
+    
+    public void DrawnGame_Confirm()
     {
-        DrawCard(turn, ai, false);
+        for (int i = 0; i < 4; i++)
+        {
+            Messages.ShowMessage(Messages.DRAWN_GAME,i);
+        }
+        ShowAndHideHands_DrawnGame();
     }
+
+    public void DrawnGame_ReadyOrNot(Scores scoresClass)
+    {
+        for(int i = 0; i < ready.Length; i++)
+        {
+            if (ready[i])
+            {
+                Messages.ShowMessage(Messages.READY,i);
+            }
+            else
+            {
+                Messages.ShowMessage(Messages.NOT_READY,i);
+            }
+        }
+
+        scoresClass.AddOrRemoveScore(ScoreCalculator.NoReadyPenalty(ready));
+    }
+
     //プレイヤー1名分の手牌を表示(基底関数)
-    private void ShowHand_Only(int player, bool show)
+    private void ShowHand_Only(int player, bool show,bool drawnGame)
     {
         GameManagerScript.DestroyGameObjects(ref handObjects[player]);    //表示している手牌のゲームオブジェクトを削除
         for (int i = 0; i < hands[player].Count; i++)
@@ -411,7 +512,7 @@ public class Cards {
             card.transform.rotation =
                 Quaternion.Euler(Layouts.handRotations[player]);    //角度を決定
 
-            if (player == 0 && UserActions.Playing())
+            if (player == 0 && UserActions.Playing()&&drawnGame==false)
             {
                 card.AddComponent<BoxCollider2D>();
 
@@ -451,7 +552,7 @@ public class Cards {
     {
         bool[] shows = { true, true, true, true };      //人間以外の手牌は裏向き
 
-        ShowHand_Only(player, shows[player]);           //真偽値に応じた牌の向きで表示
+        ShowHand_Only(player, shows[player],false);           //真偽値に応じた牌の向きで表示
     }
 
     //全員分の手牌を表裏を考慮して表示(派生関数)
@@ -459,7 +560,7 @@ public class Cards {
     {
         for (int i = 0; i < hands.Length; i++)
         {
-            ShowHand_Only(i, shows[i]);
+            ShowHand_Only(i, shows[i],false);
         }
     }
 
@@ -479,8 +580,17 @@ public class Cards {
         ShowAndHideHands(shows);    //真偽値リストに基づいて表示
     }
 
+    //流局時の手牌表示(派生関数)
+    private void ShowAndHideHands_DrawnGame()
+    {
+        for (int i = 0; i < hands.Length; i++)
+        {
+            ShowHand_Only(i,ready[i] , false);
+        }
+    }
+
     //プレイヤー1名分の捨て牌を表示(基底関数)
-    private void ShowTableCard_Only(int player)
+    private void ShowTableCard_Only(int player,bool alpha)
     {
         GameManagerScript.DestroyGameObjects(ref tableObjects[player]);       //捨て牌のゲームオブジェクトを削除
 
@@ -497,6 +607,12 @@ public class Cards {
             card.transform.rotation =
                 Quaternion.Euler(Layouts.tableRotations[player]);           //角度を決定
 
+            if (alpha)
+            {
+                Color newColor= card.GetComponent<SpriteRenderer>().color;
+                newColor.a = 0.1f;
+                card.GetComponent<SpriteRenderer>().color = newColor;
+            }
             tableObjects[player].Add(card);     //メモリ解放用のリストに格納
         }
     }
@@ -571,11 +687,11 @@ public class Cards {
     }
 
     //全員分の捨て牌を表示(派生関数)
-    private void ShowTableCards_All()
+    public void ShowTableCards_All(bool alpha)
     {
         for (int i = 0; i < tables.Length; i++)
         {
-            ShowTableCard_Only(i);
+            ShowTableCard_Only(i,alpha);
         }
     }
 }

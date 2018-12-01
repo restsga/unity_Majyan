@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Times{
 
-    private static float speed = 1.0f;
+    private static float speed = 5.0f;
 
     public static float Wait_Deal()
     {
@@ -42,7 +42,15 @@ public class Times{
     {
         return 1.0f / speed;
     }
-    public static float Wait_DrawnGame()
+    public static float Wait_ConfirmDrawnGame()
+    {
+        return 2.0f / speed;
+    }
+    public static float Wait_ReadyOrNot()
+    {
+        return 2.0f / speed;
+    }
+    public static float Wait_ShowAddOrRemoveScore()
     {
         return 2.0f / speed;
     }

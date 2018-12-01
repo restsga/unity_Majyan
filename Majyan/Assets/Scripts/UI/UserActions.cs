@@ -27,7 +27,7 @@ public class UserActions : MonoBehaviour
     static public bool canTi = false;
     static public bool canDraw = false;
 
-    static private bool playing = true;
+    static private bool playing = false;
 
 
     // Update is called once per frame
@@ -129,21 +129,21 @@ public class UserActions : MonoBehaviour
                     handIndexes_forCall[nextIndex_forCall % 2] = cardIndex;
                     nextIndex_forCall++;
                 }
-            }
 
-            if (selecting == TI_SELECTING)
-            {
-                ti_PL();
+                if (selecting == TI_SELECTING)
+                {
+                    ti_PL();
+                }
+                else if (selecting == PON_SELECTING)
+                {
+                    pon_PL();
+                }
+                else if (selecting == KAN_SELECTING)
+                {
+                    kan_PL();
+                }
             }
-            else if(selecting==PON_SELECTING)
-            {
-                pon_PL();
-            }
-            else if (selecting == KAN_SELECTING)
-            {
-                kan_PL();
-            }
-
+            
             movingCardId = GameManagerScript.NULL_ID;
             movingCardIndex = GameManagerScript.NULL_ID;
 

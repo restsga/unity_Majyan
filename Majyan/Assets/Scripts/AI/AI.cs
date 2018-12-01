@@ -255,14 +255,17 @@ abstract public class AI
         return groupAndSorted;
     }
 
-    static public bool[] ReadyAndWaiting(List<int> hand)
+    static public bool[] ReadyAndWaiting(List<int> hand,ref bool ready)
     {
         //待ち牌
-        bool[] waiting = new bool[34];
-        for (int i = 0; i < waiting.Length; i++)
+        bool[] waitingCards = new bool[34];
+        for (int i = 0; i < waitingCards.Length; i++)
         {
-            waiting[i] = false;
+            waitingCards[i] = false;
         }
+
+        //聴牌フラグ
+        ready = false;
 
         //各牌の枚数
         int[] cardCounts_row = new int[34];
@@ -275,7 +278,7 @@ abstract public class AI
             cardCounts_row[hand[i] / 2]++;
         }
 
-        int[] cardCounts = CopyCardCountsForEdit(cardCounts_row);
+        int[] cardCounts = ArrayBase.CopyForEdit(cardCounts_row);
 
         for (int h = 0; h < cardCounts.Length; h++)
         {
@@ -295,12 +298,13 @@ abstract public class AI
 
                             if (Can4Sets(cardCounts))
                             {
-                                waiting[w] = true;
+                                waitingCards[w] = true;
+                                ready = true;
                             }
                         }
                     }
 
-                    cardCounts = CopyCardCountsForEdit(cardCounts_row);
+                    cardCounts = ArrayBase.CopyForEdit(cardCounts_row);
                 }
             }
 
@@ -311,14 +315,15 @@ abstract public class AI
 
                 if (Can4Sets(cardCounts))
                 {
-                    waiting[h] = true;
+                    waitingCards[h] = true;
+                    ready = true;
                 }
 
-                cardCounts = CopyCardCountsForEdit(cardCounts_row);
+                cardCounts = ArrayBase.CopyForEdit(cardCounts_row);
             }
         }
 
-        return waiting;
+        return waitingCards;
     }
 
     static private bool Enable(int[] cardCounts, int card)
@@ -388,16 +393,6 @@ abstract public class AI
         return false;
     }
 
-    static private int[] CopyCardCountsForEdit(int[] cardCounts)
-    {
-        int[] copy = new int[cardCounts.Length];
-        for(int i = 0; i < cardCounts.Length; i++)
-        {
-            copy[i] = cardCounts[i];
-        }
-        return copy;
-    }
-
     static private bool Can4Sets(int[] cardCounts)
     {
         for (int i = 0; i < cardCounts.Length; i++)
@@ -441,6 +436,16 @@ abstract public class AI
     }
 
     /*
+    static private int[] CopyCardCountsForEdit(int[] cardCounts)
+    {
+        int[] copy = new int[cardCounts.Length];
+        for(int i = 0; i < cardCounts.Length; i++)
+        {
+            copy[i] = cardCounts[i];
+        }
+        return copy;
+    }
+    
     static public int Syanten_01(List<int> hand)
     {
         int isolate = 0;

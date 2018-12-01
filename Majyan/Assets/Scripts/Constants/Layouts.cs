@@ -40,6 +40,9 @@ public class Layouts
         {new Vector2(0.3f,0f),new Vector2(0f,0.3f),
         new Vector2(-0.3f,0f),new Vector2(0f,-0.3f)};
 
+    readonly static public Vector2[] addScoreTextDirections =
+        {new Vector2(0f,-0.4f),new Vector2(0.4f,0f),
+    new Vector2(0f,0.4f),new Vector2(-0.4f,0f)};
 
     // ドラ表示牌 //
     readonly static public Vector2 bonusOffset = new Vector2(-5f, 3f);

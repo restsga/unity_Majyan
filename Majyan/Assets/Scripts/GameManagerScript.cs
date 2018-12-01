@@ -81,13 +81,14 @@ public class GameManagerScript : MonoBehaviour {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
         //272:PL明カン→PL加カン,552&977:初手PL暗カン
-        seed = 540;
+        seed = 272;
         seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000 + seed);         //seed値を入力
 
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
 
         CardImages.Initialize();
+        Messages.Initialize();
         UserActions.ti_PL = Ti_PL;
         UserActions.pon_PL = Pon_PL;
         UserActions.kan_PL = Kan_PL;
@@ -119,7 +120,7 @@ public class GameManagerScript : MonoBehaviour {
         cards.Initialize_NextRound();
         phases.Initialize_NextRound();
 
-        scores.ShowScores_All(phases.SeatWinds());       //全員分の得点を表示
+        scores.ShowScores_All(phases.SeatWinds(),false);       //全員分の得点を表示
        
         methodsTimer.AddTimer(Deal, 0f);
     }
@@ -137,7 +138,7 @@ public class GameManagerScript : MonoBehaviour {
     {
         UserActions.ResetCanCall();
 
-        int actionId = cards.DrawCard(phases.GetTurn(),ai);
+        int actionId = cards.DrawDeckCard(phases.GetTurn(),ai);
 
         if (phases.GetTurn() != 0 || UserActions.Playing()==false)
         {
@@ -184,7 +185,7 @@ public class GameManagerScript : MonoBehaviour {
 
         if (actionId == AI.DRAWN_GAME)
         {
-            methodsTimer.AddTimer(DrawnGame, Times.Wait_DrawnGame());
+            methodsTimer.AddTimer(DrawnGame_Confirm, Times.Wait_ConfirmDrawnGame());
 
             return;
         }
@@ -396,9 +397,23 @@ public class GameManagerScript : MonoBehaviour {
     }
     
     //流局
-    private void DrawnGame()
+    private void DrawnGame_Confirm()
     {
+        cards.DrawnGame_Confirm();
+        methodsTimer.AddTimer(DrawnGame_ReadyOrNot, Times.Wait_ReadyOrNot());
+    }
 
+    private void DrawnGame_ReadyOrNot()
+    {
+        cards.DrawnGame_ReadyOrNot(scores);
+        methodsTimer.AddTimer(ShowAddOrRemoveScore, Times.Wait_ShowAddOrRemoveScore());
+    }
+
+    private void ShowAddOrRemoveScore()
+    {
+        cards.ShowTableCards_All(true);
+        scores.ShowScores_All(phases.SeatWinds(), false);
+        scores.ShowScores_All(phases.SeatWinds(), true);
     }
 
     //牌のゲームオブジェクトを削除
