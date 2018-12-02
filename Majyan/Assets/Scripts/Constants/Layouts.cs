@@ -21,8 +21,8 @@ public class Layouts
 
     // 得点表示用テキスト //
     readonly static public Vector2[] scoreTextOffsets =
-        {new Vector2(-0.7f,-0.65f),new Vector2(1f,-0.2f),
-       new Vector2(0.7f,1.5f),new Vector2(-1f,1.1f)};
+        {new Vector2(-0.7f,-0.75f),new Vector2(1.1f,-0.2f),
+       new Vector2(0.7f,1.6f),new Vector2(-1.1f,1.1f)};
 
     readonly static public Vector2[] scoreTextScales =
         {new Vector2(0.3f,0.3f),new Vector2(0.3f,0.3f),
@@ -45,7 +45,7 @@ public class Layouts
     new Vector2(0f,0.4f),new Vector2(-0.4f,0f)};
 
     // ドラ表示牌 //
-    readonly static public Vector2 bonusOffset = new Vector2(-5f, 3f);
+    readonly static public Vector2 bonusOffset = new Vector2(-4.5f, 3f);
     readonly static public Vector2 bonusScale = new Vector2(0.75f, 0.75f);
     readonly static public Vector2 bonusLineupDirection = new Vector2(0.5f, 0f);
     readonly static public Vector3 bonusRotation = new Vector3(0f, 0f, 0f);
@@ -70,8 +70,8 @@ public class Layouts
 
     // 捨て牌 //
     readonly static public Vector2[] tableOffsets =
-        { new Vector2(-1f, -1.2f) ,new Vector2(1.55f,-0.55f),
-        new Vector2(1f,2.05f),new Vector2(-1.55f,1.45f)};
+        { new Vector2(-1f, -1.25f) ,new Vector2(1.65f,-0.55f),
+        new Vector2(1f,2.1f),new Vector2(-1.65f,1.45f)};
 
     readonly static public Vector2[] tableScales =
         {new Vector2(0.6f,0.6f),new Vector2(0.6f,0.6f),

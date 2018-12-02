@@ -43,6 +43,20 @@ public class Scores{
         }
     }
 
+    public bool Riichi(int player,Phases phases)
+    {
+        if (scores[player] >= 1000)
+        {
+            scores[player] -= 1000;
+            ShowScore(player, phases.PlayerIdToSeatWind(player), false);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     //得点表示
     public void ShowScore(int player, int seatWind, bool add)
     {
@@ -113,7 +127,7 @@ public class Scores{
 
                 if (add)
                 {
-                    Color newColor = text.GetComponent<SpriteRenderer>().color;
+                    Color newColor = new Color();
                     newColor.a = 0.75f;
                     if (minus)
                     {

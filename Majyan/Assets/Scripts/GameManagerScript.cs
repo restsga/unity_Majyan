@@ -174,11 +174,13 @@ public class GameManagerScript : MonoBehaviour {
 
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            actionId = cards.Discard(UserActions.GetMovingCardIndex(), 0, ai,ref callPlayer);
+            actionId = cards.Discard
+                (UserActions.GetMovingCardIndex(), 0, ai,ref callPlayer,scores,phases);
         }
         else
         {
-            actionId = cards.Discard(ai[phases.GetTurn()].GetDiscardIndex(), phases.GetTurn(), ai,ref callPlayer);
+            actionId = cards.Discard
+                (ai[phases.GetTurn()].GetDiscardIndex(), phases.GetTurn(), ai,ref callPlayer,scores,phases);
         }
 
         methodsTimer.AddTimer(OpenAddBonus, Times.Wait_OpenAddBonus());
@@ -405,15 +407,15 @@ public class GameManagerScript : MonoBehaviour {
 
     private void DrawnGame_ReadyOrNot()
     {
-        cards.DrawnGame_ReadyOrNot(scores);
+        cards.DrawnGame_ReadyOrNot(scores,phases);
         methodsTimer.AddTimer(ShowAddOrRemoveScore, Times.Wait_ShowAddOrRemoveScore());
     }
 
     private void ShowAddOrRemoveScore()
     {
-        cards.ShowTableCards_All(true);
         scores.ShowScores_All(phases.SeatWinds(), false);
         scores.ShowScores_All(phases.SeatWinds(), true);
+        methodsTimer.AddTimer(Initialize_NextRound, Times.Wait_ToNextRound());
     }
 
     //牌のゲームオブジェクトを削除

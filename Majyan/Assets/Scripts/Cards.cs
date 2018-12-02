@@ -15,11 +15,14 @@ public class Cards {
 
     // ステータス //
     private bool[] ready = new bool[4];
+    private bool[] riichi = new bool[4];
+    private bool[] ippatu = new bool[4];
 
     // オブジェクト //
     private List<GameObject>[] handObjects = new List<GameObject>[4];       //手牌
     private List<GameObject>[] tableObjects = new List<GameObject>[4];      //捨て牌
     private List<GameObject>[] callObjects = new List<GameObject>[4];       //鳴き牌
+    private SpriteRenderer[] riichiStick = new SpriteRenderer[4];
     
     public Cards()
     {
@@ -38,6 +41,8 @@ public class Cards {
     //新規に対戦を開始するための初期化
     public void Initialize_NewGame()
     {
+        ArrayBase.Initialize(riichiStick, "RiichiSticks/Stick");
+
         deck.Initialize_NewGame();
 
         Initialize_NextRound();
@@ -53,6 +58,14 @@ public class Cards {
         ArrayBase.ListClear(calls);
 
         ArrayBase.ResetArray(waitingCards,false);
+        ArrayBase.ResetArray(ready, false);
+        ArrayBase.ResetArray(riichi, false);
+        ArrayBase.ResetArray(ippatu, false);
+        ArrayBase.ResetAlphas(riichiStick, 0f);
+
+        ShowAndHideHands_Default();
+        ShowTableCards_All(false);
+        ShowCallCard_All(false);
     }
 
     //配牌
@@ -84,6 +97,7 @@ public class Cards {
     {
         DrawCard(turn, ai, false);
     }
+    //牌を引く(牌山、嶺上牌共通)
     private int DrawCard(int turn, AI[] ai,bool draw_deck)
     {
         if (draw_deck)
@@ -97,18 +111,29 @@ public class Cards {
             hands[turn].Add(deck.DrawKanCard());
         }
         //手番プレイヤーの手牌を表示
-        ShowOrHideHand_Only(turn);        
+        ShowOrHideHand_Only(turn);
+
+        //引いた牌が待ち牌の場合は勝利宣言可能
+        bool canWinCall=false;
+        if (waitingCards[turn][hands[turn][hands[turn].Count - 1] / 2])
+        {
+            canWinCall = true;
+        }
 
         if (turn == 0 && UserActions.Playing())
         {
             /* プレイヤーの手番の場合
              * 
              * 入力待ちモードに移行
-             * 暗槓、加槓が出来るならフラグを立てる
+             * 勝利宣言、暗槓、加槓が出来るならフラグを立てる
              */
 
             UserActions.SelectingDiscard();
 
+            if (canWinCall)
+            {
+                UserActions.canWinCall = true;
+            }
             if (AI.CanClosedKan(hands[0]).Count >= 1)
             {
                 UserActions.canClosedKan = true;
@@ -123,33 +148,94 @@ public class Cards {
         else
         {
             //AIの手番の場合、行動を決定して終了
+            if (canWinCall)
+            {
+                return AI.WIN_SELF_DRAW;
+            }
             return ai[turn].DecideDiscardOrKan(hands[turn], calls[turn]);
         }
     }
 
     //捨て牌
-    public int Discard(int discardIndex,int turn,AI[] ai,ref int callPlayer)
+    public int Discard(int discardIndex, int turn, AI[] ai, ref int callPlayer, Scores scoresClass, Phases phases)
     {
+        //立直している時は強制的にツモ切り
+        if (riichi[turn])
+        {
+            discardIndex = hands[turn].Count - 1;
+        }
+
         /* 捨て牌をする
          * 
          * 河に追加して手牌から削除する
          */
         int discard = hands[turn][discardIndex];
-        tables[turn].Add(discard);    
-        hands[turn].RemoveAt(discardIndex);       
+        tables[turn].Add(discard);
+        hands[turn].RemoveAt(discardIndex);
 
         //手牌と河の再表示
-        ShowOrHideHand_Only(turn);    
-        ShowTableCard_Only(turn,false);
+        ShowOrHideHand_Only(turn);
+        ShowTableCard_Only(turn, false);
 
-        //聴牌判定
-        waitingCards[turn] = AI.ReadyAndWaiting(hands[turn],ref ready[turn]);
-
-        //仮配置(聴牌表示)
-        if (ready[turn])
+        //聴牌で門前かつ立直していない場合は立直可能
+        waitingCards[turn] = AI.ReadyAndWaiting(hands[turn], ref ready[turn]);
+        bool canRiichi = false;
+        if (ready[turn] && riichi[turn] == false)
         {
-            Messages.ShowMessage(Messages.READY,turn);
+            canRiichi = true;
+
+            for (int i = 0; i < calls[turn].Count; i++)
+            {
+                if (calls[turn][i].IsThisClosedKan() == false)
+                {
+                    canRiichi = false;
+                    break;
+                }
+            }
         }
+        //立直可能な場合
+        if (canRiichi)
+        {
+            bool callRiichi = false;
+            if (turn == 0 && UserActions.Playing())
+            {
+                if (UserActions.wantToCallRiichi)
+                {
+                    //プレイヤーが立直しようとしている場合
+                    callRiichi = true;
+                }
+            }
+            else
+            {
+                if (ai[turn].GetCallRiichi())
+                {
+                    //AIが立直しようとしている場合
+                    callRiichi = true;
+                }
+            }
+
+            if (callRiichi)
+            {
+                /* 立直する場合
+                 * 
+                 * 1000点減らす
+                 * 立直フラグを立てる
+                 * 一発フラグを立てる
+                 * 1000点棒を表示
+                 * 立直のメッセージを表示
+                 */
+                if (scoresClass.Riichi(turn, phases))
+                {
+                    riichi[turn] = true;
+                    ippatu[turn] = true;
+                    riichiStick[turn].color = new Color(1f, 1f, 1f, 1f);
+                    Messages.ShowMessage(Messages.RIICHI, turn);
+                }
+            }
+        }
+
+        //プレイヤーからの入力フラグ、実行可能行動フラグをリセット
+        UserActions.ResetCanCall();
 
         if (deck.IsExhaustionDeck())
         {
@@ -166,13 +252,13 @@ public class Cards {
             playing = 1;
         }
         //ポン、カンの有無を決定
-        for(int i = 0+playing; i < hands.Length; i++)
+        for (int i = 0 + playing; i < hands.Length; i++)
         {
-            //捨て牌をした競技者が鳴くことは不可
-            if (turn != i)
+            //捨て牌をした競技者、立直中の競技者が鳴くことは不可
+            if (turn != i && riichi[i] == false)
             {
                 //鳴きの有無を取得
-                int actionId= ai[i].DecideCallKanOrPon(hands[i], discard);
+                int actionId = ai[i].DecideCallKanOrPon(hands[i], discard);
                 if (actionId != AI.NOT_CALL)
                 {
                     //鳴きを行う場合は競技者IDを保存
@@ -183,7 +269,7 @@ public class Cards {
             }
         }
         //プレイヤーが遊んでいるならプレイヤーによる鳴きが可能かを決定する
-        if (UserActions.Playing())
+        if (UserActions.Playing() && riichi[0] == false)
         {
             //手牌内の捨て牌と同一の牌の枚数
             int sameCount = AI.CanCallKanOrPon(hands[0], discard).Count;
@@ -205,15 +291,18 @@ public class Cards {
 
         //チーを出来る競技者のID
         int tiPlayer = (turn + 1) % 4;
-        if (tiPlayer== 0 && UserActions.Playing())
+        if (tiPlayer == 0 && UserActions.Playing())
         {
-            /* チーを出来る競技者がプレイヤーだった場合
-             * 
-             * チーが可能な手牌ならフラグを立てる
-             */
-            if (AI.CanCallTi(hands[0], discard).Count >= 1)
+            if (riichi[tiPlayer] == false)
             {
-                UserActions.canTi = true;
+                /* チーを出来る競技者がプレイヤーだった場合
+                 * 
+                 * チーが可能な手牌ならフラグを立てる
+                 */
+                if (AI.CanCallTi(hands[0], discard).Count >= 1)
+                {
+                    UserActions.canTi = true;
+                }
             }
             return AI.WAIT_INPUT;
         }
@@ -221,9 +310,17 @@ public class Cards {
         {
             /* チーを出来る競技者がAIだった場合
              * 
-             * 牌山から牌を引くかチーをするかを決定
+             * 立直している場合の選択肢は牌を引くのみ
+             * 立直していない場合は牌山から牌を引くかチーをするかを決定
              */
-            return ai[tiPlayer].DecideDrawCardOrTi(hands[tiPlayer], discard);
+            if (riichi[tiPlayer])
+            {
+                return AI.DRAW_CARD;
+            }
+            else
+            {
+                return ai[tiPlayer].DecideDrawCardOrTi(hands[tiPlayer], discard);
+            }
         }
     }
 
@@ -266,7 +363,7 @@ public class Cards {
         //手牌、河、鳴き牌を再表示
         ShowOrHideHand_Only(tiPlayer);
         ShowTableCard_Only(turn,false);     
-        ShowCallCard_Only(tiPlayer);
+        ShowCallCard_Only(tiPlayer,false);
 
         //メッセージを表示
         Messages.ShowMessage(Messages.TI,tiPlayer);
@@ -340,7 +437,7 @@ public class Cards {
         //手牌、河、鳴き牌を再表示
         ShowOrHideHand_Only(callPlayer);    
         ShowTableCard_Only(turn,false);     
-        ShowCallCard_Only(callPlayer);
+        ShowCallCard_Only(callPlayer,false);
 
         //メッセージを表示
         Messages.ShowMessage(Messages.PON,callPlayer);
@@ -379,7 +476,7 @@ public class Cards {
         calls[turn][calls[turn].Count - 1].ClosedKan(callCard, turn); //暗カンとして格納
 
         ShowOrHideHand_Only(turn);        //手牌を表示
-        ShowCallCard_Only(turn);          //鳴き牌を表示
+        ShowCallCard_Only(turn,false);          //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
 
@@ -413,7 +510,7 @@ public class Cards {
         calls[turn][addIndexOfCalls].AddKan(callCard, turn); //加カンとして格納
 
         ShowOrHideHand_Only(turn);        //手牌を表示
-        ShowCallCard_Only(turn);          //鳴き牌を表示
+        ShowCallCard_Only(turn,false);          //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
 
@@ -449,7 +546,7 @@ public class Cards {
 
         ShowOrHideHand_Only(callPlayer);    //手牌を表示
         ShowTableCard_Only(turn,false);     //捨て牌を表示
-        ShowCallCard_Only(callPlayer);      //鳴き牌を表示
+        ShowCallCard_Only(callPlayer,false);      //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
 
@@ -468,9 +565,12 @@ public class Cards {
             Messages.ShowMessage(Messages.DRAWN_GAME,i);
         }
         ShowAndHideHands_DrawnGame();
+        ShowTableCards_All(true);
+        ShowCallCard_All(true);
+        deck.EndRound_ShowBonusAlpha();
     }
 
-    public void DrawnGame_ReadyOrNot(Scores scoresClass)
+    public void DrawnGame_ReadyOrNot(Scores scoresClass,Phases phases)
     {
         for(int i = 0; i < ready.Length; i++)
         {
@@ -485,6 +585,16 @@ public class Cards {
         }
 
         scoresClass.AddOrRemoveScore(ScoreCalculator.NoReadyPenalty(ready));
+
+        int betCount = 0;
+        for(int i = 0; i < riichi.Length; i++)
+        {
+            if (riichi[i])
+            {
+                betCount++;
+            }
+        }
+        phases.EndRound(ready[phases.HouseIdToPlayerId(0)],true,betCount);
     }
 
     //プレイヤー1名分の手牌を表示(基底関数)
@@ -512,6 +622,13 @@ public class Cards {
             card.transform.rotation =
                 Quaternion.Euler(Layouts.handRotations[player]);    //角度を決定
 
+            Color newColor = new Color(1f,1f,1f,1f);
+            
+            if (drawnGame)
+            {
+                newColor.a = 0.3f;
+            }
+
             if (player == 0 && UserActions.Playing()&&drawnGame==false)
             {
                 card.AddComponent<BoxCollider2D>();
@@ -521,9 +638,7 @@ public class Cards {
                 {
                     if (index == UserActions.handIndexes_forCall[j])
                     {
-                        Color color = card.GetComponent<SpriteRenderer>().color;
-                        color.a = 0.5f;
-                        card.GetComponent<SpriteRenderer>().color = color;
+                        newColor.a = 0.5f;
                     }
                 }
 
@@ -542,6 +657,8 @@ public class Cards {
                 click.callback.AddListener((f) => UserActions.MouseClick(index,this));
                 card.GetComponent<EventTrigger>().triggers.Add(click);
             }
+
+            card.GetComponent<SpriteRenderer>().color = newColor;
 
             handObjects[player].Add(card);      //メモリ解放用のリストに格納
         }
@@ -585,7 +702,7 @@ public class Cards {
     {
         for (int i = 0; i < hands.Length; i++)
         {
-            ShowHand_Only(i,ready[i] , false);
+            ShowHand_Only(i,ready[i] , true);
         }
     }
 
@@ -609,7 +726,7 @@ public class Cards {
 
             if (alpha)
             {
-                Color newColor= card.GetComponent<SpriteRenderer>().color;
+                Color newColor= new Color(1f,1f,1f,1f);
                 newColor.a = 0.1f;
                 card.GetComponent<SpriteRenderer>().color = newColor;
             }
@@ -618,7 +735,7 @@ public class Cards {
     }
 
     //鳴き牌表示
-    private void ShowCallCard_Only(int player)
+    private void ShowCallCard_Only(int player,bool alpha)
     {
         GameManagerScript.DestroyGameObjects(ref callObjects[player]);    //表示している手牌のゲームオブジェクトを削除
 
@@ -681,8 +798,23 @@ public class Cards {
                 card.transform.rotation =
                     Quaternion.Euler(Layouts.callRotations[player] + addRotation);    //牌の角度を決定
 
+                if (alpha)
+                {
+                    Color newColor= new Color(1f,1f,1f,1f);
+                    newColor.a = 0.5f;
+                    card.GetComponent<SpriteRenderer>().color = newColor;
+                }
+
                 callObjects[player].Add(card);  //メモリ解放用のリストに格納
             }
+        }
+    }
+
+    private void ShowCallCard_All(bool alpha)
+    {
+        for(int i = 0; i < calls.Length; i++)
+        {
+            ShowCallCard_Only(i,alpha);
         }
     }
 
@@ -738,7 +870,22 @@ public class CallCardsSet
     {
         return callKind == KAN;
     }
-    
+    public bool IsThisClosedKan()
+    {
+        if (IsThisKan()==false)
+        {
+            return false;
+        }
+        for (int i = 1; i < callCards.Count; i++)
+        {
+            if (callCards[i - 1].discardPlayer != callCards[i].discardPlayer)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
 
     //明カン
     public void OpenKan(int[] cardsId,int discard, int callPlayer, int discardPlayer)
@@ -901,7 +1048,7 @@ internal class Deck
             bonusCards[i] = DrawCard();
         }
 
-        ShowBonusCards();
+        ShowBonusCards(false);
     }
 
     //シャッフル
@@ -945,14 +1092,14 @@ internal class Deck
         {
             showBonusIndex++;
 
-            ShowBonusCards();
+            ShowBonusCards(false);
         }
 
         pendingShowBonusCount = 0;
     }
 
     //ドラ表示牌を表示
-    private void ShowBonusCards()
+    private void ShowBonusCards(bool alpha)
     {
         GameManagerScript.DestroyGameObjects(ref bonusObjects);    //表示しているドラ表示牌のゲームオブジェクトを削除
 
@@ -977,8 +1124,20 @@ internal class Deck
             cardObject.transform.rotation =
                 Quaternion.Euler(Layouts.bonusRotation);    //角度を決定
 
+            if (alpha)
+            {
+                Color newColor= new Color(1f,1f,1f,1f);
+                newColor.a = 0.5f;
+                cardObject.GetComponent<SpriteRenderer>().color = newColor;
+            }
+
             bonusObjects.Add(cardObject);      //メモリ解放用のリストに格納
         }
+    }
+
+    public void EndRound_ShowBonusAlpha()
+    {
+        ShowBonusCards(true);
     }
 
     public int[] GetBonusCards()

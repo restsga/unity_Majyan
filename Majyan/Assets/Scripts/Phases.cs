@@ -42,12 +42,12 @@ public class Phases {
 
     public void Initialize_NextRound()
     {
-        turnPlayer = Rules.HouseIdToPlayerId(startPlayer, round, 0);    //東家のプレイヤーの手番で開始
+        turnPlayer = HouseIdToPlayerId(0);    //東家のプレイヤーの手番で開始
 
         ShowRound();
     }
 
-    public void EndRound(bool parentStay,bool increaseParentCount)
+    public void EndRound(bool parentStay,bool increaseParentCount,int addBetCount)
     {
         //親が流れた場合は局数のカウントを追加
         if (parentStay == false)
@@ -63,6 +63,8 @@ public class Phases {
         {
             parentCount = 0;    //n本場をリセット
         }
+
+        betCount += addBetCount;
     }
 
     public void ShowRound()
@@ -98,6 +100,12 @@ public class Phases {
     public int PlayerIdToSeatWind(int player)
     {
         return (Math.Abs(startPlayer - (player + 4)) + round) % 4;
+    }
+
+    //方角idをプレイヤーidに変換
+    public int HouseIdToPlayerId(int house)
+    {
+        return (startPlayer + round + house) % 4;
     }
 
     //全員分の自風

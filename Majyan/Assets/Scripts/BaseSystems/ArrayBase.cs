@@ -40,6 +40,15 @@ public class ArrayBase{
             ResetArray(array[i], boolean);
         }
     }
+    static public void ResetAlphas(SpriteRenderer[] array,float value)
+    {
+        for (int i = 0; i < array.Length; i++)
+        {
+            Color newColor = array[i].color;
+            newColor.a=value;
+            array[i].color = newColor;
+        }
+    }
 
     static public void Initialize(bool[][] array, int elementsCount)
     {
@@ -76,6 +85,13 @@ public class ArrayBase{
             array[i] = new List<CallCardsSet>();
         }
         ListClear(array);
+    }
+    static public void Initialize(SpriteRenderer[] array,string path)
+    {
+        for (int i = 0; i < array.Length; i++)
+        {
+            array[i] = GameObject.Find(path + i).GetComponent<SpriteRenderer>();
+        }
     }
 
     static public void ListClear(List<int>[] array)

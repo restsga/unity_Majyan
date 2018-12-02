@@ -7,19 +7,21 @@ abstract public class AI
 {
 
     static public readonly int
-        DRAW_CARD = 1, TI = 2, DISCARD = 3, CLOSED_KAN = 4, ADD_KAN = 5, OPEN_KAN = 6, PON = 7,
-        NOT_CALL = 10,
-        WAIT_INPUT = 11,
-        DRAWN_GAME = 21;
+        DRAW_CARD = 1, TI = 2, DISCARD = 3, CLOSED_KAN = 4, ADD_KAN = 5, OPEN_KAN = 6, PON = 7,RIICHI=8,WIN_SELF_DRAW=9,
+        WIN_ON_DISCARD=10,NOT_CALL = 20,
+        WAIT_INPUT = 21,
+        DRAWN_GAME = 31;
 
     protected int discard_index;
     protected int call_index;
     protected int call_index2_forTi;
     protected bool useBonusCard_forPon;
+    protected bool callRiichi;
 
     public abstract int DecideDiscardOrKan(List<int> hand, List<CallCardsSet> call);
     public abstract int DecideCallKanOrPon(List<int> hand, int discard);
     public abstract int DecideDrawCardOrTi(List<int> hand, int discard);
+    public abstract bool DecideWin_SelfDraw(List<int> hand);
 
     public int GetDiscardIndex()
     {
@@ -37,6 +39,10 @@ abstract public class AI
     public bool GetUseBonusCardForPon()
     {
         return useBonusCard_forPon;
+    }
+    public bool GetCallRiichi()
+    {
+        return callRiichi;
     }
 
     static public List<int> CanClosedKan(List<int> hand)

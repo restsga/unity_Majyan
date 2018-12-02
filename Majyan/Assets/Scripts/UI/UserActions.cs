@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UserActions : MonoBehaviour
 {
@@ -26,8 +27,10 @@ public class UserActions : MonoBehaviour
     static public bool canPon = false;
     static public bool canTi = false;
     static public bool canDraw = false;
+    static public bool canWinCall = false;
+    static public bool wantToCallRiichi = false;
 
-    static private bool playing = false;
+    static private bool playing = true;
 
 
     // Update is called once per frame
@@ -177,8 +180,40 @@ public class UserActions : MonoBehaviour
         }
     }
 
+    public void OnClickRiichiButton()
+    {
+        if (wantToCallRiichi)
+        {
+            wantToCallRiichi = false;
+        }
+        else
+        {
+            wantToCallRiichi = true;
+        }
+
+        RiichiButtonColor();
+    }
+
+    static private void RiichiButtonColor()
+    {
+        Color newColor;
+        if (wantToCallRiichi)
+        {
+            newColor = new Color(0f, 1f, 0f, 1f);
+        }
+        else
+        {
+            newColor = new Color(1f, 1f, 1f, 1f);
+        }
+        GameObject.Find("Canvas/Riichi").GetComponentInChildren<Image>().color = newColor;
+
+    }
     public void OnClickWinButton()
     {
+        if (canWinCall)
+        {
+
+        }
     }
 
     static public void ResetSelect()
@@ -199,6 +234,9 @@ public class UserActions : MonoBehaviour
         canPon = false;
         canTi = false;
         canDraw = false;
+        canWinCall = false;
+        wantToCallRiichi = false;
+        RiichiButtonColor();
     }
 
     static public void ResetMoving()

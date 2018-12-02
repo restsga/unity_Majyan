@@ -7,7 +7,7 @@ public class Draw_Discard:AI {
 
     public Draw_Discard()
     {
-
+        callRiichi = true;
     }
     
     public override int DecideDiscardOrKan(List<int> hand,List<CallCardsSet> call)
@@ -53,19 +53,24 @@ public class Draw_Discard:AI {
         return NOT_CALL;
     }
 
-    public override int DecideDrawCardOrTi(List<int> hand,int discard)
+    public override int DecideDrawCardOrTi(List<int> hand, int discard)
     {
         List<int[]> indexSets = CanCallTi(hand, discard);
 
         if (indexSets.Count >= 1)
         {
             call_index = indexSets[0][0];
-            call_index2_forTi= indexSets[0][1];
+            call_index2_forTi = indexSets[0][1];
 
-            discard_index = hand.Count - 1-2;
+            discard_index = hand.Count - 1 - 2;
             return TI;
         }
 
         return DRAW_CARD;
+    }
+    
+    public override bool DecideWin_SelfDraw(List<int> hand)
+    {
+        return true;
     }
 }
