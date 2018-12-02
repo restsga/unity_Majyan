@@ -96,10 +96,17 @@ public class Phases {
         }
     }
 
+    //場風
+    public int FieldWind()
+    {
+        return round / 4;
+    }
+
     //自風
     public int PlayerIdToSeatWind(int player)
     {
-        return (Math.Abs(startPlayer - (player + 4)) + round) % 4;
+        //return (Math.Abs(startPlayer - (player + 4)) + round) % 4;
+        return Math.Abs((startPlayer + round) % 4 - (player + 4)) % 4;
     }
 
     //方角idをプレイヤーidに変換

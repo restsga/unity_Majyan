@@ -49,6 +49,7 @@ public class Layouts
     readonly static public Vector2 bonusScale = new Vector2(0.75f, 0.75f);
     readonly static public Vector2 bonusLineupDirection = new Vector2(0.5f, 0f);
     readonly static public Vector3 bonusRotation = new Vector3(0f, 0f, 0f);
+    readonly static public Vector2 bonusDirection_riichi = new Vector2(0f, -0.7f);
 
     // 手牌 //
     readonly static public Vector2[] handOffsets =

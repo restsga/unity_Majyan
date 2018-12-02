@@ -152,8 +152,9 @@ public class Scores{
     }
 
     //全員分の得点を表示(派生関数)
-    public void ShowScores_All(int[] seatWinds,bool add)
+    public void ShowScores_All(bool add)
     {
+        int[] seatWinds = GameManagerScript.phases.SeatWinds();
         for (int i = 0; i < scores.Length; i++)
         {
             ShowScore(i,seatWinds[i],add);

@@ -58,11 +58,11 @@ public class GameManagerScript : MonoBehaviour {
 
     // クラス
     private Cards cards = new Cards();
-    private Scores scores = new Scores();   //得点
-    private Phases phases = new Phases();   //進行
+    static public Scores scores = new Scores();   //得点
+    static public Phases phases = new Phases();   //進行
     
     //AI
-    private AI[] ai = { new Draw_Discard(), new Draw_Discard(), new Draw_Discard(), new Draw_Discard() };
+    static public AI[] ai = { new Isolate_Discard(), new Isolate_Discard(), new Isolate_Discard(), new Isolate_Discard() };
 
     // 定数 //
     static public readonly int NULL_ID = -1000;  //nullとして扱う数値
@@ -70,7 +70,7 @@ public class GameManagerScript : MonoBehaviour {
     // 変数 //    
     private MethodsTimer methodsTimer = new MethodsTimer();       //一定時間経過後に実行する関数
 
-    private int callPlayer=NULL_ID;
+    static public int callPlayer=NULL_ID;
     
     private int seed;       //乱数のseed値(表示用)
 
@@ -93,6 +93,7 @@ public class GameManagerScript : MonoBehaviour {
         UserActions.pon_PL = Pon_PL;
         UserActions.kan_PL = Kan_PL;
         UserActions.discard_PL = Discard_PL;
+        UserActions.win_PL = Win_PL;
 
         Initialize_NewGame();       //ゲーム開始時用の初期化処理
     }
@@ -120,7 +121,7 @@ public class GameManagerScript : MonoBehaviour {
         cards.Initialize_NextRound();
         phases.Initialize_NextRound();
 
-        scores.ShowScores_All(phases.SeatWinds(),false);       //全員分の得点を表示
+        scores.ShowScores_All(false);       //全員分の得点を表示
        
         methodsTimer.AddTimer(Deal, 0f);
     }
@@ -130,19 +131,44 @@ public class GameManagerScript : MonoBehaviour {
     {
         cards.Deal();
 
-        methodsTimer.AddTimer(DrawCard, Times.Wait_DealToDraw());
+        if (phases.GetTurn() != 0 || UserActions.Playing() == false)
+        {
+            methodsTimer.AddTimer(DrawDeckCard, Times.Wait_DealToDraw());
+        }
     }
 
     //牌を引く
-    private void DrawCard()
+    private void DrawDeckCard()
+    {
+        DrawCard(true);
+    }
+
+    //嶺上牌を引く
+    private void DrawKanCard()
+    {
+        DrawCard(false);
+    }
+
+    private void DrawCard(bool deck)
     {
         UserActions.ResetCanCall();
 
-        int actionId = cards.DrawDeckCard(phases.GetTurn(),ai);
-
-        if (phases.GetTurn() != 0 || UserActions.Playing()==false)
+        int actionId;
+        if (deck) { 
+            actionId = cards.DrawDeckCard();
+        }
+        else
         {
-            if (actionId == AI.DISCARD)
+            actionId = cards.DrawKanCard();
+        }
+
+        if (phases.GetTurn() != 0 || UserActions.Playing() == false)
+        {
+            if (actionId == AI.WIN_SELF_DRAW)
+            {
+                methodsTimer.AddTimer(WinSelfDraw, Times.Wait_WinSelfDraw());
+            }
+            else if (actionId == AI.DISCARD)
             {
                 methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
             }
@@ -174,13 +200,11 @@ public class GameManagerScript : MonoBehaviour {
 
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            actionId = cards.Discard
-                (UserActions.GetMovingCardIndex(), 0, ai,ref callPlayer,scores,phases);
+            actionId = cards.Discard(UserActions.GetMovingCardIndex());
         }
         else
         {
-            actionId = cards.Discard
-                (ai[phases.GetTurn()].GetDiscardIndex(), phases.GetTurn(), ai,ref callPlayer,scores,phases);
+            actionId = cards.Discard(ai[phases.GetTurn()].GetDiscardIndex());
         }
 
         methodsTimer.AddTimer(OpenAddBonus, Times.Wait_OpenAddBonus());
@@ -233,7 +257,7 @@ public class GameManagerScript : MonoBehaviour {
     private void NextTurn()
     {
         phases.ChangeTurn_Default();
-        DrawCard();     //牌を引く
+        DrawDeckCard();     //牌を引く
     }
 
     //チー
@@ -242,7 +266,7 @@ public class GameManagerScript : MonoBehaviour {
         int tiPlayer = (phases.GetTurn() + 1) % 4;
         if (tiPlayer == 0 && UserActions.Playing())
         {
-            if(cards.Ti(phases.GetTurn(), UserActions.handIndexes_forCall) == false)
+            if(cards.Ti(UserActions.handIndexes_forCall) == false)
             {
                 return;
             }
@@ -256,7 +280,7 @@ public class GameManagerScript : MonoBehaviour {
         }
         else
         {
-            cards.Ti(phases.GetTurn(), ai[tiPlayer].GetCallIndexesForTi());
+            cards.Ti(ai[tiPlayer].GetCallIndexesForTi());
             phases.ChangeTurn_Default();
             methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
         }
@@ -276,7 +300,7 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (callPlayer == 0 && UserActions.Playing())
         {
-            if(cards.Pon(phases.GetTurn(), callPlayer, AI.Bonus5(UserActions.GetIndexOnly()))==false)
+            if(cards.Pon(AI.Bonus5(UserActions.GetIndexOnly()))==false)
             {
                 return;
             }
@@ -286,7 +310,7 @@ public class GameManagerScript : MonoBehaviour {
         }
         else
         {
-            cards.Pon(phases.GetTurn(), callPlayer, ai[callPlayer].GetUseBonusCardForPon());
+            cards.Pon(ai[callPlayer].GetUseBonusCardForPon());
             methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
         }
         phases.ChangeTurn_Call(callPlayer);
@@ -314,14 +338,14 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            if( cards.ClosedKan(phases.GetTurn(), UserActions.GetIndexOnly())==false)
+            if(cards.ClosedKan(UserActions.GetIndexOnly())==false)
             {
                 return;
             }
         }
         else
         {
-            cards.ClosedKan(phases.GetTurn(), ai[phases.GetTurn()].GetCallIndex());
+            cards.ClosedKan(ai[phases.GetTurn()].GetCallIndex());
         }
         methodsTimer.AddTimer(OpenAddBonus,Times.Wait_OpenAddBonus());
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
@@ -335,14 +359,14 @@ public class GameManagerScript : MonoBehaviour {
     {
         if (phases.GetTurn() == 0 && UserActions.Playing())
         {
-            if(cards.AddKan(phases.GetTurn(), UserActions.GetIndexOnly()) == false)
+            if(cards.AddKan(UserActions.GetIndexOnly()) == false)
             {
                 return;
             }
         }
         else
         {
-            cards.AddKan(phases.GetTurn(), ai[phases.GetTurn()].GetCallIndex());
+            cards.AddKan(ai[phases.GetTurn()].GetCallIndex());
         }
 
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
@@ -353,7 +377,7 @@ public class GameManagerScript : MonoBehaviour {
     //明カン
     private void OpenKan()
     {
-        cards.OpenKan(phases.GetTurn(), callPlayer);
+        cards.OpenKan();
         phases.ChangeTurn_Call(callPlayer);
 
         methodsTimer.AddTimer(DrawKanCard, Times.Wait_DrawKanCard());
@@ -383,21 +407,6 @@ public class GameManagerScript : MonoBehaviour {
         cards.OpenAddBonusCard();
     }
 
-    //嶺上牌を引く
-    private void DrawKanCard()
-    {
-        cards.DrawKanCard(phases.GetTurn(),ai);
-
-        if (phases.GetTurn() == 0 && UserActions.Playing())
-        {
-            UserActions.SelectingDiscard();
-        }
-        else
-        {
-            methodsTimer.AddTimer(Discard, Times.Wait_DrawToDiscard());
-        }
-    }
-    
     //流局
     private void DrawnGame_Confirm()
     {
@@ -407,15 +416,53 @@ public class GameManagerScript : MonoBehaviour {
 
     private void DrawnGame_ReadyOrNot()
     {
-        cards.DrawnGame_ReadyOrNot(scores,phases);
+        cards.DrawnGame_ReadyOrNot();
         methodsTimer.AddTimer(ShowAddOrRemoveScore, Times.Wait_ShowAddOrRemoveScore());
     }
 
     private void ShowAddOrRemoveScore()
     {
-        scores.ShowScores_All(phases.SeatWinds(), false);
-        scores.ShowScores_All(phases.SeatWinds(), true);
+        scores.ShowScores_All(false);
+        scores.ShowScores_All(true);
         methodsTimer.AddTimer(Initialize_NextRound, Times.Wait_ToNextRound());
+    }
+
+    private void WinSelfDraw()
+    {
+        cards.WinSelfDraw();
+        UserActions.ResetCanCall();
+        UserActions.ResetSelect();
+        methodsTimer.AddTimer(ShowRiichiBonus, Times.Wait_ShowRiichiBonus());
+    }
+
+    public void Win_PL()
+    {
+        if (UserActions.Playing())
+        {
+            if (phases.GetTurn() == 0)
+            {
+                WinSelfDraw();
+            }
+            else
+            {
+
+            }
+        }
+    }
+
+    private void ShowRiichiBonus()
+    {
+        UserActions.ResetCanCall();
+        cards.ShowRiichiBonus();
+        methodsTimer.AddTimer(CalculateScore, Times.Wait_CalculateScore());
+    }
+
+    private void CalculateScore()
+    {
+        Messages.ShowMessage(Messages.WIN_SELF,0);
+        Messages.ShowMessage(Messages.WIN_SELF, 1);
+        Messages.ShowMessage(Messages.WIN_SELF, 2);
+        Messages.ShowMessage(Messages.WIN_SELF, 3);
     }
 
     //牌のゲームオブジェクトを削除

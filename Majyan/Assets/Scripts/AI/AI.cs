@@ -50,14 +50,7 @@ abstract public class AI
         List<int> indexes = new List<int>();
         indexes.Clear();
 
-        int[] sortedHand = new int[hand.Count];     //元のリストを変更しないためのコピー
-
-        //リストから編集用の配列に情報を複製
-        for (int i = 0; i < hand.Count; i++)
-        {
-            sortedHand[i] = hand[i];
-        }
-
+        int[] sortedHand = ArrayBase.CopyForEdit(hand.ToArray());     //元のリストを変更しないためのコピー
         Array.Sort(sortedHand);     //並べ替え
 
         int chain = 1;
@@ -275,10 +268,7 @@ abstract public class AI
 
         //各牌の枚数
         int[] cardCounts_row = new int[34];
-        for (int i = 0; i < cardCounts_row.Length; i++)
-        {
-            cardCounts_row[i] = 0;
-        }
+        ArrayBase.ResetArray(cardCounts_row, 0);
         for (int i = 0; i < hand.Count; i++)
         {
             cardCounts_row[hand[i] / 2]++;
@@ -332,7 +322,7 @@ abstract public class AI
         return waitingCards;
     }
 
-    static private bool Enable(int[] cardCounts, int card)
+    static protected bool Enable(int[] cardCounts, int card)
     {
         if (cardCounts[card] >= 3 - 1)
         {

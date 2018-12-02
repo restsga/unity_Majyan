@@ -13,6 +13,7 @@ public class UserActions : MonoBehaviour
     static public UserInputMethod pon_PL;
     static public UserInputMethod kan_PL;
     static public UserInputMethod discard_PL;
+    static public UserInputMethod win_PL;
 
     static private int movingCardId = GameManagerScript.NULL_ID;
     static private int movingCardIndex = GameManagerScript.NULL_ID;
@@ -212,7 +213,7 @@ public class UserActions : MonoBehaviour
     {
         if (canWinCall)
         {
-
+            win_PL();
         }
     }
 

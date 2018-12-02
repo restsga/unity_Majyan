@@ -58,4 +58,16 @@ public class Times{
     {
         return 6.0f / speed;
     }
+    public static float Wait_WinSelfDraw()
+    {
+        return 1.5f / speed;
+    }
+    public static float Wait_ShowRiichiBonus()
+    {
+        return 1.5f / speed;
+    }
+    public static float Wait_CalculateScore()
+    {
+        return 1.0f / speed;
+    }
 }
