@@ -195,7 +195,8 @@ public class Yaku {
     {
         if ((Array.FindIndex<int>(cardCount, n => n > 0) >= 0) == false)
         {
-            analyzed_all.Add(analyzed_child);
+            List<int[]> analyzed_child_copy=ArrayBase.CopyForEdit(analyzed_child);
+            analyzed_all.Add(analyzed_child_copy);
             return;
         }
         for (int i = 0; i < cardCount.Length; i++)

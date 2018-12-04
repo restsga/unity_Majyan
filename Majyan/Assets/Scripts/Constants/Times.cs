@@ -62,6 +62,10 @@ public class Times{
     {
         return 1.5f / speed;
     }
+    public static float Wait_WinOnDiscard()
+    {
+        return 2.0f / speed;
+    }
     public static float Wait_ShowRiichiBonus()
     {
         return 1.5f / speed;

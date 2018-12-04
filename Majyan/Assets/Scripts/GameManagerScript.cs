@@ -217,6 +217,12 @@ public class GameManagerScript : MonoBehaviour {
 
         methodsTimer.AddTimer(OpenAddBonus, Times.Wait_OpenAddBonus());
 
+        if (actionId == AI.WIN_ON_DISCARD)
+        {
+            methodsTimer.AddTimer(WinOnDiscard, Times.Wait_WinOnDiscard());
+                return;
+        }
+
         if (actionId == AI.DRAWN_GAME)
         {
             methodsTimer.AddTimer(DrawnGame_Confirm, Times.Wait_ConfirmDrawnGame());
@@ -329,7 +335,6 @@ public class GameManagerScript : MonoBehaviour {
         {
             UserActions.SelectingDiscard();
         }
-
     }
 
     public void Pon_PL()
@@ -442,6 +447,17 @@ public class GameManagerScript : MonoBehaviour {
         UserActions.ResetSelect();
         methodsTimer.AddTimer(ShowRiichiBonus, Times.Wait_ShowRiichiBonus());
     }
+    private void WinOnDiscard()
+    {
+        WinOnDiscard(false);
+    }
+    private void WinOnDiscard(bool user)
+    {
+        cards.WinOnDiscard(user);
+        UserActions.ResetCanCall();
+        UserActions.ResetSelect();
+        methodsTimer.AddTimer(ShowRiichiBonus, Times.Wait_ShowRiichiBonus());
+    }
 
     public void Win_PL()
     {
@@ -453,7 +469,8 @@ public class GameManagerScript : MonoBehaviour {
             }
             else
             {
-
+                methodsTimer.Reset();
+                WinOnDiscard(true);
             }
         }
     }

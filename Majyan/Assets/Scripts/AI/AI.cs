@@ -19,9 +19,10 @@ abstract public class AI
     protected bool callRiichi;
 
     public abstract int DecideDiscardOrKan(List<int> hand, List<CallCardsSet> call);
-    public abstract int DecideCallKanOrPon(List<int> hand, int discard);
-    public abstract int DecideDrawCardOrTi(List<int> hand, int discard);
-    public abstract bool DecideWin_SelfDraw(List<int> hand);
+    public abstract int DecideCallKanOrPon(List<int> hand, List<CallCardsSet> call, int discard);
+    public abstract int DecideDrawCardOrTi(List<int> hand, List<CallCardsSet> call, int discard);
+    public abstract bool DecideWin_SelfDraw(List<int> hand, List<CallCardsSet> call);
+    public abstract bool DecideWin_OnDiscard(List<int> hand, List<CallCardsSet> call);
 
     public int GetDiscardIndex()
     {

@@ -19,6 +19,8 @@ public class Cards {
     private bool[] ippatsu = new bool[4];
     private bool[] doubleRiichi = new bool[4];
     private bool[] winner = new bool[4];
+    private bool[] callRon = new bool[4];
+    private bool canDoubleRiichi;
 
     // オブジェクト //
     private List<GameObject>[] handObjects = new List<GameObject>[4];       //手牌
@@ -65,11 +67,14 @@ public class Cards {
         ArrayBase.ResetArray(ippatsu, false);
         ArrayBase.ResetArray(doubleRiichi, false);
         ArrayBase.ResetArray(winner, false);
+        ArrayBase.ResetArray(callRon, false);
         ArrayBase.ResetAlphas(riichiStick, 0f);
 
         ShowAndHideHands_Default();
         ShowTableCards_All(false);
         ShowCallCard_All(false);
+
+        canDoubleRiichi = true;
     }
 
     //配牌
@@ -89,6 +94,9 @@ public class Cards {
             {
                 hands[p].Sort();
             }
+
+            //聴牌と待ち牌判定
+            waitingCards[p] = AI.ReadyAndWaiting(hands[p], ref ready[p]);
 
             //手牌を表示
             ShowOrHideHand_Only(p); 
@@ -175,7 +183,7 @@ public class Cards {
         else
         {
             //AIの手番の場合、行動を決定して終了
-            if (canWinCall&&ai[turn].DecideWin_SelfDraw(hands[turn]))
+            if (canWinCall&&ai[turn].DecideWin_SelfDraw(hands[turn],calls[turn]))
             {
                 return AI.WIN_SELF_DRAW;
             }
@@ -191,10 +199,17 @@ public class Cards {
         AI[] ai = GameManagerScript.ai;
         int turn = phases.GetTurn();
 
-        //立直している時は強制的にツモ切り
+        //立直している時は強制的にツモ切り、一発を消す
         if (riichi[turn])
         {
             discardIndex = hands[turn].Count - 1;
+            ippatsu[turn] = false;
+        }
+
+        //捨て牌が既にあるならダブル立直は不可
+        if (tables[turn].Count >= 1)
+        {
+            canDoubleRiichi = false;
         }
 
         /* 捨て牌をする
@@ -244,6 +259,7 @@ public class Cards {
                     /* 立直する場合
                      * 
                      * 1000点減らす
+                     * ダブル立直可能ならそのフラグを立てる
                      * 立直フラグを立てる
                      * 一発フラグを立てる
                      * 1000点棒を表示
@@ -251,6 +267,10 @@ public class Cards {
                      */
                     if (scoresClass.Riichi(turn, phases))
                     {
+                        if (canDoubleRiichi)
+                        {
+                            doubleRiichi[turn] = true;
+                        }
                         riichi[turn] = true;
                         ippatsu[turn] = true;
                         riichiStick[turn].color = new Color(1f, 1f, 1f, 1f);
@@ -263,6 +283,55 @@ public class Cards {
         //プレイヤーからの入力フラグ、実行可能行動フラグをリセット
         UserActions.ResetCanCall();
 
+        // ロン //
+
+        //ロンの有無を決定
+        for (int i = 0; i < hands.Length; i++)
+        {
+            //捨て牌をした競技者、ノーテンの競技者は不可
+            if (turn != i && ready[i])
+            {
+                /* 条件を全て満たす場合は勝利宣言可能
+                 * 
+                 * 引いた牌が待ち牌
+                 * ドラを除く役が1つ以上ある
+                 */
+                int winCard = discard / 2;
+                if (waitingCards[i][winCard])
+                {
+                    hands[i].Add(discard);
+
+                    YakuJudgementDatas judgementDatas = new YakuJudgementDatas
+                        (hands[i], calls[i], winCard, phases.FieldWind(), phases.PlayerIdToSeatWind(i),
+                        riichi[i], ippatsu[i], doubleRiichi[i], false, deck.IsExhaustionDeck(),false);
+
+                    int fu = 0;
+                    int[] yaku = Yaku.Judgements(judgementDatas, ref fu);
+
+                    if (Array.FindIndex<int>(yaku, n => n >= 1) >= 0)
+                    {
+                        if (i==0&& UserActions.Playing())
+                        {
+                            UserActions.canWinCall = true;
+                        }
+                        else
+                        {
+                            if (ai[i].DecideWin_OnDiscard(hands[i], calls[i]))
+                            {
+                                callRon[i] = true;
+                            }
+                        }
+                    }
+
+                    hands[i].RemoveAt(hands[i].Count - 1);
+                }
+            }
+        }
+        if (Array.FindIndex<bool>(callRon, boolean => boolean == true) >= 0)
+        {
+            return AI.WIN_ON_DISCARD;
+        }
+        
         if (deck.IsExhaustionDeck())
         {
             //牌山が無くなった場合は流局
@@ -284,7 +353,7 @@ public class Cards {
             if (turn != i && riichi[i] == false)
             {
                 //鳴きの有無を取得
-                int actionId = ai[i].DecideCallKanOrPon(hands[i], discard);
+                int actionId = ai[i].DecideCallKanOrPon(hands[i], calls[i], discard);
                 if (actionId != AI.NOT_CALL)
                 {
                     //鳴きを行う場合は競技者IDを保存
@@ -345,7 +414,7 @@ public class Cards {
             }
             else
             {
-                return ai[tiPlayer].DecideDrawCardOrTi(hands[tiPlayer], discard);
+                return ai[tiPlayer].DecideDrawCardOrTi(hands[tiPlayer], calls[tiPlayer], discard);
             }
         }
     }
@@ -386,7 +455,11 @@ public class Cards {
         }
         tables[turn].RemoveAt(tables[turn].Count - 1);
         calls[tiPlayer].Add(new CallCardsSet());    
-        calls[tiPlayer][calls[tiPlayer].Count - 1].Ti(cards,discard, tiPlayer, turn); 
+        calls[tiPlayer][calls[tiPlayer].Count - 1].Ti(cards,discard, tiPlayer, turn);
+
+        //ダブル立直、一発を消す
+        canDoubleRiichi = false;
+        ArrayBase.ResetArray(ippatsu, false);
 
         //手牌、河、鳴き牌を再表示
         ShowOrHideHand_Only(tiPlayer);
@@ -465,6 +538,10 @@ public class Cards {
         calls[callPlayer].Add(new CallCardsSet());   
         calls[callPlayer][calls[callPlayer].Count - 1].Pon(cards,discard, callPlayer, turn);
 
+        //ダブル立直、一発を消す
+        canDoubleRiichi = false;
+        ArrayBase.ResetArray(ippatsu, false);
+        
         //手牌、河、鳴き牌を再表示
         ShowOrHideHand_Only(callPlayer);    
         ShowTableCard_Only(turn,false);     
@@ -513,6 +590,10 @@ public class Cards {
 
         deck.AddPendingShowBonusCount();
 
+        //ダブル立直、一発を消す
+        canDoubleRiichi = false;
+        ArrayBase.ResetArray(ippatsu, false);
+
         Messages.ShowMessage(Messages.KAN,turn);
 
         return true;
@@ -548,6 +629,10 @@ public class Cards {
         ShowCallCard_Only(turn,false);          //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
+
+        //ダブル立直、一発を消す
+        canDoubleRiichi = false;
+        ArrayBase.ResetArray(ippatsu, false);
 
         Messages.ShowMessage(Messages.KAN,turn);
 
@@ -587,6 +672,10 @@ public class Cards {
         ShowCallCard_Only(callPlayer,false);      //鳴き牌を表示
 
         deck.AddPendingShowBonusCount();
+
+        //ダブル立直、一発を消す
+        canDoubleRiichi = false;
+        ArrayBase.ResetArray(ippatsu, false);
 
         Messages.ShowMessage(Messages.KAN,callPlayer);
     }
@@ -644,6 +733,24 @@ public class Cards {
         ShowHand_Only(turn, true, false,true);
         winner[turn] = true;
         Messages.ShowMessage(Messages.WIN_SELF, turn);
+    }
+
+    public void WinOnDiscard(bool user)
+    {
+        if (user)
+        {
+            callRon[0] = true;
+        }
+
+        for(int i = 0; i < winner.Length; i++)
+        {
+            if (callRon[i])
+            {
+                ShowHand_Only(i, true, false, true);
+                winner[i] = true;
+                Messages.ShowMessage(Messages.WIN_DISCARD, i);
+            }
+        }
     }
 
     public void ShowRiichiBonus()

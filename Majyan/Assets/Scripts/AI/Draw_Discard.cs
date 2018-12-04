@@ -30,7 +30,7 @@ public class Draw_Discard:AI {
         return DISCARD;
     }
 
-    public override int DecideCallKanOrPon(List<int> hand,int discard)
+    public override int DecideCallKanOrPon(List<int> hand,List<CallCardsSet> call,int discard)
     {
         List<int> ponOrKanIndexes = CanCallKanOrPon(hand, discard);
 
@@ -53,7 +53,7 @@ public class Draw_Discard:AI {
         return NOT_CALL;
     }
 
-    public override int DecideDrawCardOrTi(List<int> hand, int discard)
+    public override int DecideDrawCardOrTi(List<int> hand, List<CallCardsSet> call, int discard)
     {
         List<int[]> indexSets = CanCallTi(hand, discard);
 
@@ -69,7 +69,12 @@ public class Draw_Discard:AI {
         return DRAW_CARD;
     }
     
-    public override bool DecideWin_SelfDraw(List<int> hand)
+    public override bool DecideWin_SelfDraw(List<int> hand, List<CallCardsSet> call)
+    {
+        return true;
+    }
+
+    public override bool DecideWin_OnDiscard(List<int> hand, List<CallCardsSet> call)
     {
         return true;
     }
