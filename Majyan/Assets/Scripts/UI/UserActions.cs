@@ -28,6 +28,7 @@ public class UserActions : MonoBehaviour
     static public bool canPon = false;
     static public bool canTi = false;
     static public bool canDraw = false;
+    static public bool canFirstDraw = false;
     static public bool canWinCall = false;
     static public bool wantToCallRiichi = false;
 
@@ -235,6 +236,7 @@ public class UserActions : MonoBehaviour
         canPon = false;
         canTi = false;
         canDraw = false;
+        canFirstDraw = false;
         canWinCall = false;
         wantToCallRiichi = false;
         RiichiButtonColor();

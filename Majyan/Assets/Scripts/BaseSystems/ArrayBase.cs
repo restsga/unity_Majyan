@@ -127,4 +127,18 @@ public class ArrayBase{
 
         return copy;
     }
+    static public List<int[]> CopyForEdit(List<int[]> list)
+    {
+        List<int[]> copy = new List<int[]>();
+        for (int countL = 0; countL < list.Count; countL++)
+        {
+            int[] array = new int[list[countL].Length];
+            for (int countA = 0; countA < list[countL].Length; countA++)
+            {
+                array[countA] = list[countL][countA];
+            }
+            copy.Add(array);
+        }
+        return copy;
+    }
 }

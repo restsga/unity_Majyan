@@ -135,6 +135,10 @@ public class GameManagerScript : MonoBehaviour {
         {
             methodsTimer.AddTimer(DrawDeckCard, Times.Wait_DealToDraw());
         }
+        else
+        {
+            UserActions.canFirstDraw = true;
+        }
     }
 
     //牌を引く
@@ -185,11 +189,15 @@ public class GameManagerScript : MonoBehaviour {
 
     public void DrawCard_PL()
     {
-        if ((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing()&&
-            UserActions.canDraw&&UserActions.GetSelecting()==NULL_ID)
+        if (((phases.GetTurn() + 1) % 4 == 0 && UserActions.Playing()&&
+            UserActions.canDraw&&UserActions.GetSelecting()==NULL_ID))
         {
             UserActions.ResetSelect();
             NextTurn();
+        }
+        else if (UserActions.canFirstDraw)
+        {
+            DrawDeckCard();
         }
     }
 

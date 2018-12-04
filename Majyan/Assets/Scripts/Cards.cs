@@ -129,15 +129,17 @@ public class Cards {
          * ドラを除く役が1つ以上ある
          */
         bool canWinCall=false;
-        if (waitingCards[turn][hands[turn][hands[turn].Count - 1] / 2])
+        int winCard = hands[turn][hands[turn].Count - 1] / 2;
+        if (waitingCards[turn][winCard])
         {
             Phases phases = GameManagerScript.phases;
 
             YakuJudgementDatas judgementDatas = new YakuJudgementDatas
-                (hands[turn], calls[turn], phases.FieldWind(), phases.PlayerIdToSeatWind(turn),
-                riichi[turn], ippatsu[turn], doubleRiichi[turn], true);
+                (hands[turn], calls[turn],winCard, phases.FieldWind(), phases.PlayerIdToSeatWind(turn),
+                riichi[turn], ippatsu[turn], doubleRiichi[turn], true,deck.IsExhaustionDeck(),draw_deck==false);
 
-            int[] yaku = Yaku.Judgements(judgementDatas);
+            int fu = 0;
+            int[] yaku = Yaku.Judgements(judgementDatas,ref fu);
 
             if (Array.FindIndex<int>(yaku, n => n >= 1) >= 0)
             {
@@ -215,57 +217,45 @@ public class Cards {
 
         //聴牌で門前かつ立直していない場合は立直可能
         waitingCards[turn] = AI.ReadyAndWaiting(hands[turn], ref ready[turn]);
-        bool canRiichi = false;
         if (ready[turn] && riichi[turn] == false)
         {
-            canRiichi = true;
+            if (Yaku.IsThisClosedHand(calls[turn]))
+            {
+                bool callRiichi = false;
+                if (turn == 0 && UserActions.Playing())
+                {
+                    if (UserActions.wantToCallRiichi)
+                    {
+                        //プレイヤーが立直しようとしている場合
+                        callRiichi = true;
+                    }
+                }
+                else
+                {
+                    if (ai[turn].GetCallRiichi())
+                    {
+                        //AIが立直しようとしている場合
+                        callRiichi = true;
+                    }
+                }
 
-            for (int i = 0; i < calls[turn].Count; i++)
-            {
-                if (calls[turn][i].IsThisClosedKan() == false)
+                if (callRiichi)
                 {
-                    canRiichi = false;
-                    break;
-                }
-            }
-        }
-        //立直可能な場合
-        if (canRiichi)
-        {
-            bool callRiichi = false;
-            if (turn == 0 && UserActions.Playing())
-            {
-                if (UserActions.wantToCallRiichi)
-                {
-                    //プレイヤーが立直しようとしている場合
-                    callRiichi = true;
-                }
-            }
-            else
-            {
-                if (ai[turn].GetCallRiichi())
-                {
-                    //AIが立直しようとしている場合
-                    callRiichi = true;
-                }
-            }
-
-            if (callRiichi)
-            {
-                /* 立直する場合
-                 * 
-                 * 1000点減らす
-                 * 立直フラグを立てる
-                 * 一発フラグを立てる
-                 * 1000点棒を表示
-                 * 立直のメッセージを表示
-                 */
-                if (scoresClass.Riichi(turn, phases))
-                {
-                    riichi[turn] = true;
-                    ippatsu[turn] = true;
-                    riichiStick[turn].color = new Color(1f, 1f, 1f, 1f);
-                    Messages.ShowMessage(Messages.RIICHI, turn);
+                    /* 立直する場合
+                     * 
+                     * 1000点減らす
+                     * 立直フラグを立てる
+                     * 一発フラグを立てる
+                     * 1000点棒を表示
+                     * 立直のメッセージを表示
+                     */
+                    if (scoresClass.Riichi(turn, phases))
+                    {
+                        riichi[turn] = true;
+                        ippatsu[turn] = true;
+                        riichiStick[turn].color = new Color(1f, 1f, 1f, 1f);
+                        Messages.ShowMessage(Messages.RIICHI, turn);
+                    }
                 }
             }
         }
@@ -660,10 +650,13 @@ public class Cards {
     {
         for(int i = 0; i < winner.Length; i++)
         {
-            if (winner[i] == riichi[i])
+            if (winner[i])
             {
-                deck.ShowRiichiBonus();
-                break;
+                if (winner[i] == riichi[i])
+                {
+                    deck.ShowRiichiBonus();
+                    break;
+                }
             }
         }
     }

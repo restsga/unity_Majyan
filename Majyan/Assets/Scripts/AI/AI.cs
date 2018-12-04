@@ -267,13 +267,7 @@ abstract public class AI
         ready = false;
 
         //各牌の枚数
-        int[] cardCounts_row = new int[34];
-        ArrayBase.ResetArray(cardCounts_row, 0);
-        for (int i = 0; i < hand.Count; i++)
-        {
-            cardCounts_row[hand[i] / 2]++;
-        }
-
+        int[] cardCounts_row = CardCount(hand);
         int[] cardCounts = ArrayBase.CopyForEdit(cardCounts_row);
 
         for (int h = 0; h < cardCounts.Length; h++)
@@ -320,6 +314,19 @@ abstract public class AI
         }
 
         return waitingCards;
+    }
+
+    static public int[] CardCount(List<int> hand)
+    {
+        //各牌の枚数
+        int[] cardCounts = new int[34];
+        ArrayBase.ResetArray(cardCounts, 0);
+        for (int i = 0; i < hand.Count; i++)
+        {
+            cardCounts[hand[i] / 2]++;
+        }
+
+        return cardCounts;
     }
 
     static protected bool Enable(int[] cardCounts, int card)
