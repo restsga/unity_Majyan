@@ -21,12 +21,18 @@ public class Cards {
     private bool[] winner = new bool[4];
     private bool[] callRon = new bool[4];
     private bool canDoubleRiichi;
+    private int[][] fan = new int[4][];
+    private int[] fu = new int[4];
+    private int[] dora = new int[4];
+    private int ronDiscardPlayer;
+    private int[] showScores = new int[4];
 
     // オブジェクト //
     private List<GameObject>[] handObjects = new List<GameObject>[4];       //手牌
     private List<GameObject>[] tableObjects = new List<GameObject>[4];      //捨て牌
     private List<GameObject>[] callObjects = new List<GameObject>[4];       //鳴き牌
     private SpriteRenderer[] riichiStick = new SpriteRenderer[4];
+    private List<GameObject> endingScoreObject = new List<GameObject>();
     
     public Cards()
     {
@@ -69,6 +75,10 @@ public class Cards {
         ArrayBase.ResetArray(winner, false);
         ArrayBase.ResetArray(callRon, false);
         ArrayBase.ResetAlphas(riichiStick, 0f);
+        ArrayBase.ResetArray(dora, 0);
+        ArrayBase.ResetArray(showScores, 0);
+
+        ronDiscardPlayer = GameManagerScript.NULL_ID;
 
         ShowAndHideHands_Default();
         ShowTableCards_All(false);
@@ -146,10 +156,9 @@ public class Cards {
                 (hands[turn], calls[turn],winCard, phases.FieldWind(), phases.PlayerIdToSeatWind(turn),
                 riichi[turn], ippatsu[turn], doubleRiichi[turn], true,deck.IsExhaustionDeck(),draw_deck==false);
 
-            int fu = 0;
-            int[] yaku = Yaku.Judgements(judgementDatas,ref fu);
+            fan[turn] = Yaku.Judgements(judgementDatas,ref fu[turn]);
 
-            if (Array.FindIndex<int>(yaku, n => n >= 1) >= 0)
+            if (Array.FindIndex<int>(fan[turn], n => n >= 1) >= 0)
             {
                 canWinCall = true;
             }
@@ -305,10 +314,9 @@ public class Cards {
                         (hands[i], calls[i], winCard, phases.FieldWind(), phases.PlayerIdToSeatWind(i),
                         riichi[i], ippatsu[i], doubleRiichi[i], false, deck.IsExhaustionDeck(),false);
 
-                    int fu = 0;
-                    int[] yaku = Yaku.Judgements(judgementDatas, ref fu);
+                    fan[i] = Yaku.Judgements(judgementDatas, ref fu[turn]);
 
-                    if (Array.FindIndex<int>(yaku, n => n >= 1) >= 0)
+                    if (Array.FindIndex<int>(fan[i], n => n >= 1) >= 0)
                     {
                         if (i==0&& UserActions.Playing())
                         {
@@ -729,6 +737,8 @@ public class Cards {
 
     public void WinSelfDraw()
     {
+        ShowTableCards_All(true);
+
         int turn = GameManagerScript.phases.GetTurn();
         ShowHand_Only(turn, true, false,true);
         winner[turn] = true;
@@ -737,6 +747,8 @@ public class Cards {
 
     public void WinOnDiscard(bool user)
     {
+        ShowTableCards_All(true);
+
         if (user)
         {
             callRon[0] = true;
@@ -753,17 +765,93 @@ public class Cards {
         }
     }
 
-    public void ShowRiichiBonus()
+    public void Bonus()
     {
-        for(int i = 0; i < winner.Length; i++)
+        bool show = false;
+        for (int i = 0; i < winner.Length; i++)
         {
             if (winner[i])
             {
                 if (winner[i] == riichi[i])
                 {
-                    deck.ShowRiichiBonus();
-                    break;
+                    show = true;
+                    dora[i]+= deck.CalculateBonus(hands[i], calls[i], false);
                 }
+
+                dora[i]+= deck.CalculateBonus(hands[i], calls[i], true);
+            }
+        }
+        if (show)
+        {
+            deck.ShowRiichiBonus();
+        }
+    }
+
+    public void CalculateScore(ref MethodsTimer methodsTimer)
+    {
+        Phases phases = GameManagerScript.phases;
+        Scores scoresClass = GameManagerScript.scores;
+
+        for (int i = 0; i < winner.Length; i++)
+        {
+            if (winner[i])
+            {
+                bool self = (Array.FindIndex<bool>(callRon, ron => ron == true) >= 0) == false;
+                int[] scores = ScoreCalculator.CalculateMoveScore
+                    (fan[i], dora[i], fu[i], phases.HouseIdToPlayerId(0), ronDiscardPlayer,
+                    self, i, ref showScores[i]);
+                scoresClass.AddOrRemoveScore(scores);
+
+                methodsTimer.AddTimer(ShowScore, Times.Wait_ShowEndingScore());
+            }
+        }
+        methodsTimer.AddTimer(ShowScore, Times.Wait_ShowEndingScore());
+    }
+
+    public void ShowScore()
+    {
+        Sprite[] font_num = LoadSprites.SortedNumbers_Multiple("fonts/numbers");
+
+        GameManagerScript.DestroyGameObjects(ref endingScoreObject);
+
+        for (int p = 0; p < showScores.Length; p++)
+        {
+            if (showScores[p] > 0)
+            {
+                //得点表示
+                bool zero = false;              //頭の0を表示しないためのフラグ
+                int score = showScores[p];
+
+                for (int i = 0, n = 100000; n >= 1; i++, n /= 10)
+                //i:表示場所決定用のカウンタ
+                //n:指定の桁の数値を1桁に変換するための数値
+                {
+                    if (zero || score / n > 0 || n == 1)
+                    //頭の0以外なら表示
+                    //変化量ではない場合は1の位なら無条件に表示
+                    {
+                        zero = true;    //頭の0が終わったことを示すフラグ
+
+                        //数値として表示
+                        GameObject text = new GameObject();
+                        
+                            text.AddComponent<SpriteRenderer>().sprite = font_num[score / n];     //表示する数字を決定
+                        text.transform.localScale = Layouts.scoreTextScales[p];    //大きさを決定
+                        text.transform.position =
+                            Layouts.scoreTextOffsets[p] +
+                            Layouts.scoreTextCompassSpaces[p] +
+                            Layouts.scoreTextLineupDirections[p] * i+
+                            Layouts.addScoreTextDirections[p];            //表示場所を決定
+                        text.transform.rotation =
+                            Quaternion.Euler(Layouts.scoreTextRotations[p]);   //角度を決定
+
+                        score -= (score / n) * n;               //表示した桁を0にする
+
+                        endingScoreObject.Add(text);     //メモリ解放用のリストに格納
+                    }
+                }
+
+                showScores[p] = 0;
             }
         }
     }
@@ -1267,6 +1355,22 @@ internal class Deck
         }
 
         pendingShowBonusCount = 0;
+    }
+
+    //ドラのボーナス値
+    public int CalculateBonus(List<int> hand,List<CallCardsSet> call,bool surface)
+    {
+        int firstIndex = 5;
+        if (surface)
+        {
+            firstIndex = 0;
+        }
+        int[] bonus = new int[showBonusIndex + 1];
+        for(int i = 0; i < bonus.Length; i++)
+        {
+            bonus[i] = bonusCards[i + firstIndex];
+        }
+        return Yaku.Bonus(hand, call, bonus);
     }
 
     //ドラ表示牌を表示

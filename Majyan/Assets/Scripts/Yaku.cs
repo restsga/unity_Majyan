@@ -1127,6 +1127,93 @@ public class Yaku {
         return 6 - callPenalty;
     }
 
+    static public int Bonus(List<int> hand,List<CallCardsSet> call,int[] bonusCards)
+    {
+        int count = 0;
+
+        for (int b = 0; b < bonusCards.Length; b++) {
+            int bonusId = bonusCards[b];
+            for (int h = 0; h < hand.Count; h++)
+            {
+                //赤ドラ
+                if (AI.Bonus5(hand[h]))
+                {
+                    count++;
+                }
+
+                int handId = hand[h] / 2;
+                if (handId < 3 * 9)
+                {
+                    if (handId/ 3 == bonusId / 3)
+                    {
+                        if (handId % 9 == (bonusId + 1) % 9)
+                        {
+                            count++;
+                        }
+                    }
+                }
+                else
+                {
+                    if (handId < 3 * 9 + 4)
+                    {
+                        if ((handId - (3 * 9)) % 4 == (bonusId - (3 * 9) + 1) % 4)
+                        {
+                            count++;
+                        }
+                    }
+                    else
+                    {
+                        if ((handId - (3 * 9 + 4)) % 3 == (bonusId - (3 * 9 + 3) + 1) % 4)
+                        {
+                            count++;
+                        }
+                    }
+                }
+            }
+            for(int s = 0; s < call.Count; s++)
+            {
+                for(int i = 0; i < call[s].callCards.Count; i++)
+                {
+                    //赤ドラ
+                    if (AI.Bonus5(call[s].callCards[i].cardId))
+                    {
+                        count++;
+                    }
+
+                    int handId = call[s].callCards[i].cardId / 2;
+                    if (handId < 3 * 9)
+                    {
+                        if (handId / 3 == bonusId / 3)
+                        {
+                            if (handId % 9 == (bonusId + 1) % 9)
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (handId < 3 * 9 + 4)
+                        {
+                            if ((handId - (3 * 9)) % 4 == (bonusId - (3 * 9) + 1) % 4)
+                            {
+                                count++;
+                            }
+                        }
+                        else
+                        {
+                            if ((handId - (3 * 9 + 4)) % 3 == (bonusId - (3 * 9 + 3) + 1) % 4)
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
 
 
     /* メモ

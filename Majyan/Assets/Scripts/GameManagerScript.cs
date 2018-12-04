@@ -81,8 +81,8 @@ public class GameManagerScript : MonoBehaviour {
         //Random.SetSeed(DateTime.Now.Millisecond);
 
         //272:PL明カン→PL加カン,552&977:初手PL暗カン
-        seed = 272;
-        seed = DateTime.Now.Millisecond;    //seed値決定
+        seed = 336;
+        //seed = DateTime.Now.Millisecond;    //seed値決定
         Random.SetSeed(10000 + seed);         //seed値を入力
 
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
@@ -478,16 +478,14 @@ public class GameManagerScript : MonoBehaviour {
     private void ShowRiichiBonus()
     {
         UserActions.ResetCanCall();
-        cards.ShowRiichiBonus();
+        cards.Bonus();
         methodsTimer.AddTimer(CalculateScore, Times.Wait_CalculateScore());
     }
 
     private void CalculateScore()
     {
-        Messages.ShowMessage(Messages.WIN_SELF,0);
-        Messages.ShowMessage(Messages.WIN_SELF, 1);
-        Messages.ShowMessage(Messages.WIN_SELF, 2);
-        Messages.ShowMessage(Messages.WIN_SELF, 3);
+        cards.CalculateScore(ref methodsTimer);
+        methodsTimer.AddTimer(ShowAddOrRemoveScore, Times.Wait_ShowAddOrRemoveScore());
     }
 
     //牌のゲームオブジェクトを削除

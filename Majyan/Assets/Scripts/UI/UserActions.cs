@@ -32,7 +32,7 @@ public class UserActions : MonoBehaviour
     static public bool canWinCall = false;
     static public bool wantToCallRiichi = false;
 
-    static private bool playing = true;
+    static private bool playing = false;
 
 
     // Update is called once per frame

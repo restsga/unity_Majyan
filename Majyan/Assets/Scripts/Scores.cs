@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,7 +8,7 @@ public class Scores{
 
     // 画像 //
     private Sprite[] font_ja;       //日本語
-    private Sprite[] font_num;     //数字
+    public Sprite[] font_num;     //数字
     private Sprite[] font_num_color;     //数字
 
     // オブジェクト //
@@ -56,7 +57,7 @@ public class Scores{
             return false;
         }
     }
-
+    
     //得点表示
     public void ShowScore(int player, int seatWind, bool add)
     {

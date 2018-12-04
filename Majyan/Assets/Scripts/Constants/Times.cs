@@ -74,4 +74,8 @@ public class Times{
     {
         return 1.0f / speed;
     }
+    public static float Wait_ShowEndingScore()
+    {
+        return 3.0f / speed;
+    }
 }
