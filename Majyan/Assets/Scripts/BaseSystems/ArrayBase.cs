@@ -4,10 +4,8 @@ using UnityEngine;
 
 public class ArrayBase{
 
-    static public void ResetArray(int[] array)
-    {
-        ResetArray(array, 0);
-    }
+    // 配列のリセット //
+    //int[]
     static public void ResetArray(int[] array, int value)
     {
         for (int i = 0; i < array.Length; i++)
@@ -15,10 +13,7 @@ public class ArrayBase{
             array[i] = value;
         }
     }
-    static public void ResetArray(bool[] array)
-    {
-        ResetArray(array, false);
-    }
+    //bool[]
     static public void ResetArray(bool[] array, bool boolean)
     {
         for (int i = 0; i < array.Length; i++)
@@ -26,13 +21,7 @@ public class ArrayBase{
             array[i] = boolean;
         }
     }
-    static public void ResetArray(bool[][] array)
-    {
-        for (int i = 0; i < array.Length; i++)
-        {
-            ResetArray(array[i], false);
-        }
-    }
+    //bool[][]
     static public void ResetArray(bool[][] array,bool boolean)
     {
         for(int i = 0; i < array.Length; i++)
@@ -40,6 +29,8 @@ public class ArrayBase{
             ResetArray(array[i], boolean);
         }
     }
+
+    //スプライトのアルファ値のリセット
     static public void ResetAlphas(SpriteRenderer[] array,float value)
     {
         for (int i = 0; i < array.Length; i++)
@@ -50,10 +41,8 @@ public class ArrayBase{
         }
     }
 
-    static public void Initialize(bool[][] array, int elementsCount)
-    {
-        Initialize(array, elementsCount, false);
-    }
+    // 二次元以上の配列、配列化したリストの初期化 //
+    //bool[][]
     static public void Initialize(bool[][] array,int elementsCount,bool boolean)
     {
         for(int i = 0; i < array.Length; i++)
@@ -62,6 +51,7 @@ public class ArrayBase{
         }
         ResetArray(array, boolean);
     }
+    //List<int>[]
     static public void Initialize(List<int>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -70,6 +60,7 @@ public class ArrayBase{
         }
         ListClear(array);
     }
+    //List<GameObject>[]
     static public void Initialize(List<GameObject>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -78,6 +69,7 @@ public class ArrayBase{
         }
         ListClear(array);
     }
+    //List<CallCardSet>[]
     static public void Initialize(List<CallCardsSet>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -86,6 +78,8 @@ public class ArrayBase{
         }
         ListClear(array);
     }
+
+    //SpriteRendererを読み込み、配列に格納
     static public void Initialize(SpriteRenderer[] array,string path)
     {
         for (int i = 0; i < array.Length; i++)
@@ -94,6 +88,8 @@ public class ArrayBase{
         }
     }
 
+    // 配列化されたリストのClear //
+    //List<int>[]
     static public void ListClear(List<int>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -101,6 +97,7 @@ public class ArrayBase{
             array[i].Clear();
         }
     }
+    //List<GameObject>[]
     static public void ListClear(List<GameObject>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -108,6 +105,7 @@ public class ArrayBase{
             array[i].Clear();
         }
     }
+    //List<CallCardsSet>[]
     static public void ListClear(List<CallCardsSet>[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -116,7 +114,8 @@ public class ArrayBase{
         }
     }
 
-    //元のデータに影響を与えないためのコピーを作成
+    // 元のデータに影響を与えないためのコピーを作成 //
+    //int[]
     static public int[] CopyForEdit(int[] array)
     {
         int[] copy = new int[array.Length];
@@ -127,6 +126,7 @@ public class ArrayBase{
 
         return copy;
     }
+    //List<int[]>
     static public List<int[]> CopyForEdit(List<int[]> list)
     {
         List<int[]> copy = new List<int[]>();

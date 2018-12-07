@@ -57,7 +57,7 @@ public class GameManagerScript : MonoBehaviour {
         //嶺上牌を引く
 
     // クラス
-    private Cards cards = new Cards();
+    static public Cards cards = new Cards();
     static public Scores scores = new Scores();   //得点
     static public Phases phases = new Phases();   //進行
     
@@ -87,7 +87,6 @@ public class GameManagerScript : MonoBehaviour {
 
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = ""+seed;  //seed値を表示
 
-        CardImages.Initialize();
         Messages.Initialize();
         UserActions.ti_PL = Ti_PL;
         UserActions.pon_PL = Pon_PL;

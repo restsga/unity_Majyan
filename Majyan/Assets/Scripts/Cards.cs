@@ -6,8 +6,11 @@ using UnityEngine.EventSystems;
 
 public class Cards {
 
+    //画像//
+    static public CardImages cardImages;
+
     // 牌 //
-    private Deck deck = new Deck();
+    private DeckData deck = new DeckData();
     private List<int>[] hands = new List<int>[4];
     private List<int>[] tables = new List<int>[4];
     private List<CallCardsSet>[] calls = new List<CallCardsSet>[4];
@@ -868,11 +871,11 @@ public class Cards {
             if (show)
             {
                 sprite =
-                    CardImages.Image_Front(handCard);    //表向きの牌画像
+                    cardImages.GetSprite(handCard);    //表向きの牌画像
             }
             else
             {
-                sprite = CardImages.Image_Back();    //裏向きの牌画像
+                sprite = cardImages.GetBackSprite();    //裏向きの牌画像
             }
 
             card.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
@@ -973,7 +976,7 @@ public class Cards {
         for (int i = 0; i < tables[player].Count; i++)
         {
             GameObject card = new GameObject();
-            Sprite sprite = CardImages.Image_Front(tables[player][i]);      //画像を取得
+            Sprite sprite = cardImages.GetSprite(tables[player][i]);      //画像を取得
             card.AddComponent<SpriteRenderer>().sprite = sprite;            //画像を格納
             card.transform.localScale = Layouts.tableScales[player];        //大きさを決定
             card.transform.position =
@@ -1010,11 +1013,11 @@ public class Cards {
                 Sprite sprite;
                 if (callCard.closedKan_hide)
                 {
-                    sprite = CardImages.Image_Back();   //裏向き
+                    sprite = cardImages.GetBackSprite();   //裏向き
                 }
                 else
                 {
-                    sprite = CardImages.Image_Front(callCard.cardId);   //表向き
+                    sprite = cardImages.GetSprite(callCard.cardId);   //表向き
                 }
                 card.AddComponent<SpriteRenderer>().sprite = sprite;        //画像を格納
                 card.transform.localScale = Layouts.callScales[player];     //大きさを決定
@@ -1257,7 +1260,7 @@ public class CallCardsSet
     }
 }
 
-internal class Deck
+internal class DeckData
 {   
     // 変数 //
     private int deckTopIndex;           //次に取られる牌の位置
@@ -1393,11 +1396,11 @@ internal class Deck
             if (i%5 <= showBonusIndex)
             {
                 sprite =
-                    CardImages.Image_Front(cards[i]);    //表向きの牌画像
+                    Cards.cardImages.GetSprite(cards[i]);    //表向きの牌画像
             }
             else
             {
-                sprite = CardImages.Image_Back();    //裏向きの牌画像
+                sprite = Cards.cardImages.GetBackSprite();    //裏向きの牌画像
             }
             cardObject.AddComponent<SpriteRenderer>().sprite = sprite;        //牌画像を格納
             cardObject.transform.localScale = Layouts.bonusScale;     //大きさを決定
