@@ -21,8 +21,8 @@
         return w;
     }
 
-    /*static public int Next(int maxvalue)
+    static public int Next(int maxvalue)
     {
         return (int)(Random() % maxvalue);
-    }*/
+    }
 }

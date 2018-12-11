@@ -6,9 +6,10 @@ using UnityEngine.UI;
 
 public class AppInit : State
 {
-    public AppInit()
+    public override State SetTimer()
     {
         timer = 0f;
+        return this;
     }
 
     protected override State MainFunction()
@@ -25,14 +26,14 @@ public class AppInit : State
         //競技者が保持する情報群を初期化
         Array.ForEach(Main.players, player => player.Initialize_Application());
 
-        return StateObjects.newGameInit;
+        return StateObjects.newGameInit();
     }
 
     private void ForDebugFunction()
     {
         //seed値決定と表示
-        int seed = 0;
-        seed = DateTime.Now.Millisecond;
+        int seed = 491;//299
+        //seed = DateTime.Now.Millisecond;
         XOR128.DecideInitial(seed);
         GameObject.Find("Canvas/SeedText").GetComponent<Text>().text = "" + seed;
     }

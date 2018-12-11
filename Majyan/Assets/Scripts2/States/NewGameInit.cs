@@ -2,9 +2,10 @@
 
 public class NewGameInit : State
 {
-    public NewGameInit()
+    public override State SetTimer()
     {
         timer = 0f;
+        return this;
     }
 
     protected override State MainFunction()
@@ -12,6 +13,6 @@ public class NewGameInit : State
         //各競技者の情報について初期化
         Array.ForEach<Player>(Main.players, player => player.Initialize_NewGame());
 
-        return StateObjects.newRoundInit;
+        return StateObjects.newRoundInit();
     }
 }

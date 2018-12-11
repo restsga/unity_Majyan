@@ -34,17 +34,6 @@ public class Deck
         openedBonusCount = 1;
     }
 
-    //配牌
-    public List<int> Deal()
-    {
-        //牌山の牌の一部を手牌(のための戻り値用List)に移す
-        List<int> hand = new List<int>();
-        hand = deck.GetRange(0, 13);
-        deck.RemoveRange(0, 13);
-
-        return hand;
-    }
-
     /* 連番を牌IDに変換
      * 
      * 通常の牌は偶数、赤ドラは奇数
@@ -63,5 +52,36 @@ public class Deck
         }
 
         return kind * 2 + red;
+    }
+
+    //配牌
+    public List<int> Deal()
+    {
+        //牌山の牌の一部を手牌(のための戻り値用List)に移す
+        List<int> hand = new List<int>();
+        hand = deck.GetRange(0, 13);
+        deck.RemoveRange(0, 13);
+
+        return hand;
+    }
+
+    //牌を引く
+    public int DrawCard(bool rinsyan)
+    {
+        int card;
+        if (rinsyan)
+        {
+            //嶺上牌を引く
+            card = replacements[0];
+            replacements.Remove(0);
+        }
+        else
+        {
+            //牌山から引く
+            card = deck[0];
+            deck.RemoveAt(0);
+        }
+
+        return card;
     }
 }

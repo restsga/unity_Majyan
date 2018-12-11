@@ -15,4 +15,10 @@ public class CardId {
     {
         return id % 2 == 1;
     }
+
+    //同一牌判定(赤ドラと通常牌は同一牌とみなす)
+    static public bool Same(int card1,int card2)
+    {
+        return Kind(card1) == Kind(card2);
+    }
 }

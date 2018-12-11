@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class FadeOutText : MonoBehaviour {
 
-    private const float speed = 0.6f;
+    private const float speed = 1.0f;
 
     private SpriteRenderer spriteRenderer;
 

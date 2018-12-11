@@ -28,9 +28,15 @@ abstract public class SpriteImages
 static public class ImageObjects
 {
     static public CardImages card;
+    static public JapaneseImages japaneseImages;
+    static public NormalNumberImages normalNumberImages;
+    static public MessageImages messages;
 
     static public void Initialize()
     {
         card = new CardImages();
+        japaneseImages = new JapaneseImages();
+        normalNumberImages = new NormalNumberImages();
+        messages = new MessageImages();
     }
 }

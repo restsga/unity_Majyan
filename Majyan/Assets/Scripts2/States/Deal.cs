@@ -2,9 +2,10 @@
 
 public class Deal : State
 {
-    public Deal()
+    public override State SetTimer()
     {
         timer = 1f;
+        return this;
     }
 
     protected override State MainFunction()
@@ -12,6 +13,6 @@ public class Deal : State
         //各プレイヤーに対して配牌を行う
         Array.ForEach(Main.players, player => player.Deal(Main.deck.Deal()));
 
-        return StateObjects.waitInput;
+        return StateObjects.draw();
     }
 }

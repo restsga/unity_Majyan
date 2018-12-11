@@ -2,9 +2,10 @@
 
 public class NewRoundInit : State
 {
-    public NewRoundInit()
+    public override State SetTimer()
     {
         timer = 0f;
+        return this;
     }
 
     protected override State MainFunction()
@@ -15,6 +16,6 @@ public class NewRoundInit : State
         //各競技者の情報について初期化
         Array.ForEach<Player>(Main.players, player => player.Initialize_NewRound());
 
-        return StateObjects.deal;
+        return StateObjects.deal();
     }
 }
